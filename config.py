@@ -1,0 +1,42 @@
+"""
+统一配置管理
+"""
+import os
+from pathlib import Path
+
+class Config:
+    """配置类"""
+    
+    # ========== 路径配置 ==========
+    BASE_DIR = Path(__file__).parent.absolute()
+    PRODUCTS_DIR = BASE_DIR / "products"
+    OUTPUT_DIR = BASE_DIR / "output"
+    LOGS_DIR = BASE_DIR / "logs"
+    
+    # ========== 登录配置 ==========
+    LOGIN_URL = "https://idp.amwaylive.com/auth/oauth2/default/v1/authorize?response_type=id_token&nonce=b9vqIDM1AbTRwQfTjlkJ1uYo41Zm8BoxgyLU5vaALZjW9&state=4StsyD3r4512VL5TFCPcJiwhgwaGBclXPFek4bXVCf0L9JFtIYBTz52HfqCbBdor&site=amwayjapan&response_mode=form_post&client_id=LI_Trusted_Client&scope=extended&redirect_uri=https://api.amwaylive.com/api/v2/amwayjapan/bff-login-callback&code_challenge=mmwn6l2uYwyPm1bijJcSY8KO0f0TsrJhImUs6qCbsgOfMxzT9I0brY57ElC4Yyld&code_challenge_method=PLAIN"
+    USERNAME = "nieshuqing@126.com"
+    PASSWORD = "pow897same536@a"
+    
+    # ========== 浏览器配置 ==========
+    HEADLESS = False
+    BROWSER_TIMEOUT = 30000
+    VIEWPORT_WIDTH = 1400
+    VIEWPORT_HEIGHT = 1000
+    
+    # ========== 功能开关 ==========
+    ENABLE_SHAREBAR = True
+    ENABLE_QRCODE = True
+    ENABLE_WORD = True
+    ENABLE_HTML = True
+    
+    # ========== 处理配置 ==========
+    PRODUCTS_PER_BATCH = 10
+    REQUEST_DELAY = 1.5
+    
+    @classmethod
+    def ensure_directories(cls):
+        """确保所有目录存在"""
+        for dir_path in [cls.PRODUCTS_DIR, cls.OUTPUT_DIR, cls.LOGS_DIR]:
+            dir_path.mkdir(parents=True, exist_ok=True)
+        return cls
