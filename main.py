@@ -27,7 +27,7 @@ class AmwayAutomation:
     async def run(self):
         """执行主流程"""
         self.logger.info("=" * 60)
-        self.logger.info("安利产品自动化系统 - Playwright 版")
+        self.logger.info("安利产品自动化系统 - Playwright 完整版")
         self.logger.info("=" * 60)
         
         try:
@@ -50,12 +50,8 @@ class AmwayAutomation:
                 logger=self.logger
             )
             
-            # 4. 执行处理
+            # 4. 执行完整处理流程
             await processor.process_all()
-            
-            # 5. 生成报告
-            self.logger.info("📊 生成报告...")
-            # TODO: 调用报告生成器
             
             self.logger.info("=" * 60)
             self.logger.info("✅ 所有任务完成！")

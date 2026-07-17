@@ -1,3 +1,4 @@
+# handlers/qr_handler.py
 """
 二维码生成模块
 """
@@ -30,7 +31,7 @@ class QRHandler:
             print(f"   ❌ QR码生成失败: {e}")
             return None
     
-    def merge_with_product(self, product_img_path: Path, qr_path: Path, 
+    def merge_with_image(self, product_img_path: Path, qr_path: Path, 
                            save_path: Path) -> Path:
         """合并产品图片和二维码"""
         try:
