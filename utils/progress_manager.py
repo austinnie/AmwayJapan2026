@@ -9,8 +9,9 @@ from typing import Set
 class ProgressManager:
     """进度管理器"""
     
-    def __init__(self, save_dir: Path):
-        self.save_dir = save_dir
+    def __init__(self, products_dir: Path):
+        # 🔑 保存到 products 目录
+        self.save_dir = products_dir
         self.save_dir.mkdir(parents=True, exist_ok=True)
         
         self.processed_file = self.save_dir / "processed_products.json"

@@ -1,7 +1,6 @@
 """
 统一配置管理
 """
-import os
 from pathlib import Path
 
 class Config:
@@ -9,8 +8,14 @@ class Config:
     
     # ========== 路径配置 ==========
     BASE_DIR = Path(__file__).parent.absolute()
+    
+    # 产品数据目录（所有产品相关数据）
     PRODUCTS_DIR = BASE_DIR / "products"
-    OUTPUT_DIR = BASE_DIR / "output"
+    
+    # 导出文档目录（在 products 下）
+    EXPORTS_DIR = PRODUCTS_DIR / "exports"
+    
+    # 日志目录
     LOGS_DIR = BASE_DIR / "logs"
     
     # ========== 登录配置 ==========
@@ -37,6 +42,11 @@ class Config:
     @classmethod
     def ensure_directories(cls):
         """确保所有目录存在"""
-        for dir_path in [cls.PRODUCTS_DIR, cls.OUTPUT_DIR, cls.LOGS_DIR]:
+        dirs = [
+            cls.PRODUCTS_DIR,
+            cls.EXPORTS_DIR,
+            cls.LOGS_DIR,
+        ]
+        for dir_path in dirs:
             dir_path.mkdir(parents=True, exist_ok=True)
         return cls
