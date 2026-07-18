@@ -31,27 +31,26 @@ class QRHandler:
             print(f"   ❌ QR码生成失败: {e}")
             return None
     
+    # handlers/qr_handler.py
+    # 将方法名从 merge_with_product 改为 merge_with_image
+
     def merge_with_image(self, product_img_path: Path, qr_path: Path, 
                            save_path: Path) -> Path:
-        """合并产品图片和二维码"""
         try:
             product_img = Image.open(product_img_path)
             qr_img = Image.open(qr_path)
             
-            # 调整二维码大小（产品图宽度的1/4，最小100px，最大200px）
+            # 调整二维码大小
             qr_size = min(max(product_img.width // 4, 100), 200)
             qr_resized = qr_img.resize((qr_size, qr_size), Image.Resampling.LANCZOS)
             
-            # 合并
             merged = product_img.copy()
             if merged.mode != 'RGBA':
                 merged = merged.convert('RGBA')
             
-            # 右下角位置
             margin = 20
             position = (merged.width - qr_size - margin, merged.height - qr_size - margin)
             
-            # 白色背景
             draw = ImageDraw.Draw(merged)
             draw.rectangle(
                 [position[0] - 10, position[1] - 10, 
@@ -68,3 +67,4 @@ class QRHandler:
         except Exception as e:
             print(f"   ❌ 合并失败: {e}")
             return None
+        
