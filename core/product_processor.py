@@ -851,7 +851,7 @@ class ProductProcessor:
         exports_dir.mkdir(parents=True, exist_ok=True)
         
         # 准备图片复制（HTML需要引用图片）
-        #self._prepare_images_for_export(all_products)
+        self._prepare_images_for_export(all_products)
 
    
         # 🔑 导入 WordHandler
@@ -948,7 +948,7 @@ class ProductProcessor:
     # ============================================================
     # 主入口
     # ============================================================
-    async def process_all(self, skip_scan: bool = True):
+    async def process_all(self, skip_scan: bool = False):
         """
         执行完整流程
         

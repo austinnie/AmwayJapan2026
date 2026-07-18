@@ -27,7 +27,58 @@ class AmwayAutomation:
         self.progress = ProgressManager(self.config.PRODUCTS_DIR)
         self.headless = headless if headless is not None else self.config.HEADLESS
     
-    # main.py
+
+
+    async def _check_maintenance(self) -> bool:
+        """
+        检查网站是否处于维护状态
+        返回 True 表示维护中
+        """
+        try:
+            # 🔑 等待页面加载完成（最多10秒）
+            await self.browser.page.wait_for_load_state("domcontentloaded", timeout=10000)
+            await asyncio.sleep(1)
+            
+            # 获取页面内容
+            page_text = await self.browser.page.inner_text('body')
+            self.logger.info(f"📄 当前页面内容预览: {page_text[:200]}...")
+            
+            # 🔑 维护关键词（日文）- 扩充
+            maintenance_keywords = [
+                'メンテナンス',
+                'ご利用いただけません',
+                '作業のため',
+                'しばらくお待ちください',
+                'システムメンテナンス',
+                'メンテナンス中',
+                '一時休止',
+                '時間帯はご利用',
+                '作業を実施',
+                'メンテナンス作業',
+                '利用できません',
+                'ただいま混雑',
+                'アクセス集中',
+            ]
+            
+            for keyword in maintenance_keywords:
+                if keyword in page_text:
+                    self.logger.warning(f"⚠️ 网站维护中: {keyword}")
+                    return True
+            
+            # 也检查页面标题
+            title = await self.browser.page.title()
+            if title:
+                for keyword in ['メンテナンス', 'maintenance']:
+                    if keyword.lower() in title.lower():
+                        self.logger.warning(f"⚠️ 网站维护中: {title}")
+                        return True
+            
+            return False
+            
+        except Exception as e:
+            self.logger.warning(f"⚠️ 检查维护状态失败: {e}")
+            return False
+        
 
     async def run(self, mode: str = "full"):
         """
@@ -61,7 +112,23 @@ class AmwayAutomation:
             # 🔑 其他模式需要浏览器
             self.logger.info("🚀 启动浏览器...")
             self.browser = await BrowserManager(self.config).start()
+
+            # 🔑 先访问登录页面，检测是否维护
+            self.logger.info("🔍 检查网站状态...")
+            await self.browser.page.goto(self.config.LOGIN_URL, wait_until="domcontentloaded", timeout=30000)
+            await asyncio.sleep(2)
+
+            if await self._check_maintenance():  # ← scan 模式会执行到这里
+                self.logger.error("❌ 网站正在维护，请稍后再试")
+                return
+    
+            # 🔑 先检测网站是否维护（在登录之前！）
+            self.logger.info("🔍 检查网站状态...")
+            if await self._check_maintenance():
+                self.logger.error("❌ 网站正在维护，请稍后再试")
+                return
             
+            # 🔑 网站正常，继续登录
             self.logger.info("🔐 登录...")
             login_manager = LoginManager(self.browser.page, self.config)
             if not await login_manager.login():
@@ -76,20 +143,17 @@ class AmwayAutomation:
             )
             
             if mode == "fetch":
-                # 🔑 仅获取产品列表
                 self.logger.info("🌐 获取产品列表...")
                 await processor.fetch_all_product_urls()
                 self.logger.info("✅ 产品列表获取完成！")
                 
             elif mode == "scan":
-                # 仅扫描模式
                 self.logger.info("📋 仅扫描模式...")
                 await processor.scan_all_products()
                 await processor.verify_no_sharebar()
                 self.logger.info("✅ 扫描完成！")
                 
             else:
-                # full 模式：完整流程
                 await processor.process_all()
             
             self.logger.info("=" * 60)
@@ -102,8 +166,8 @@ class AmwayAutomation:
             traceback.print_exc()
         finally:
             if self.browser:
-                await self.browser.close()  
-
+                await self.browser.close()
+            
 # main.py - 修改 argparse 部分
 def main():
     import argparse
