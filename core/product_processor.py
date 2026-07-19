@@ -493,6 +493,120 @@ class ProductProcessor:
         self.log("\n✅ 二维码生成和图片合并完成")
     
 
+    async def generate_sharebar_qr(self):
+        """
+        使用 Sharebar URL 生成二维码和合并图片
+        保存到 sharebar_qr_codes 和 sharebar_merged_images
+        """
+        self.log("\n" + "=" * 60)
+        self.log("📱 生成 Sharebar 二维码和合并图片")
+        self.log("=" * 60)
+        
+        with_sharebar_urls = self._load_urls_from_file("list-withsharebar.txt")
+        
+        if not with_sharebar_urls:
+            self.log("⚠️ 没有有 Sharebar 的产品")
+            return
+        
+        # 🔑 加载 Sharebar 映射
+        sharebar_data = self._load_sharebar_mapping()
+        
+        if not sharebar_data:
+            self.log("⚠️ 没有 Sharebar 映射数据", "error")
+            return
+        
+        category_dirs = self.file_utils.get_category_dir("all")
+        
+        # 输出目录（与 product_images 同级）
+        qr_dir = category_dirs / "sharebar_qr_codes"
+        merged_dir = category_dirs / "sharebar_merged_images"
+        qr_dir.mkdir(parents=True, exist_ok=True)
+        merged_dir.mkdir(parents=True, exist_ok=True)
+        
+        # 输入目录
+        product_images_dir = category_dirs / "product_images"
+        old_merged_dir = category_dirs / "merged_images"
+        
+        total = len(with_sharebar_urls)
+        success_count = 0
+        skip_count = 0
+        fail_count = 0
+        
+        for i, url in enumerate(with_sharebar_urls):
+            product_id = self.file_utils.extract_product_id(url)
+            
+            self.log(f"\n📦 [{i+1}/{total}] 处理产品: {product_id}")
+            
+            # 获取 Sharebar
+            sharebar = sharebar_data.get(product_id)
+            if not sharebar:
+                self.log(f"   ⚠️ 无 Sharebar，跳过")
+                skip_count += 1
+                continue
+            
+            # 查找产品图片
+            image_path = self._find_image_for_sharebar(product_id, product_images_dir, old_merged_dir)
+            
+            if not image_path:
+                self.log(f"   ⚠️ 无图片，跳过")
+                skip_count += 1
+                continue
+            
+            self.log(f"   📸 使用图片: {image_path.name}")
+            self.log(f"   🔗 Sharebar: {sharebar[:40]}...")
+            
+            # 生成二维码
+            qr_path = qr_dir / f"{product_id}_qr.png"
+            qr_result = self.qr_handler.generate_qr(sharebar, qr_path)
+            
+            if not qr_result:
+                self.log(f"   ❌ 二维码生成失败")
+                fail_count += 1
+                continue
+            
+            # 合并图片
+            merged_path = merged_dir / f"{product_id}_merged.png"
+            merge_result = self.qr_handler.merge_with_image(
+                image_path, qr_path, merged_path
+            )
+            
+            if merge_result:
+                self.log(f"   ✅ 完成")
+                success_count += 1
+            else:
+                self.log(f"   ❌ 合并失败")
+                fail_count += 1
+            
+            await asyncio.sleep(0.1)
+        
+        self.log("\n" + "=" * 60)
+        self.log(f"📊 Sharebar 二维码生成完成:")
+        self.log(f"   ✅ 成功: {success_count}")
+        self.log(f"   ⏭️ 跳过: {skip_count}")
+        self.log(f"   ❌ 失败: {fail_count}")
+        self.log(f"   📁 二维码目录: {qr_dir}")
+        self.log(f"   📁 合并图片目录: {merged_dir}")
+        self.log("=" * 60)
+
+    def _find_image_for_sharebar(self, product_id: str, product_images_dir: Path, old_merged_dir: Path) -> Path:
+        """查找产品图片（供 Sharebar 二维码使用）"""
+        # 1. 优先使用 old merged_images 中的合并图片
+        merged_path = old_merged_dir / f"{product_id}_merged.png"
+        if merged_path.exists():
+            return merged_path
+        
+        # 2. 尝试 old merged_images 中的原始图片（不带 _merged 后缀）
+        merged_path2 = old_merged_dir / f"{product_id}.png"
+        if merged_path2.exists():
+            return merged_path2
+        
+        # 3. 使用 product_images 中的原始图片
+        product_path = product_images_dir / f"{product_id}.png"
+        if product_path.exists():
+            return product_path
+        
+        return None
+    
     def _load_sharebar_mapping(self) -> dict:
         """加载 Sharebar 映射（一次性加载，供第三步使用）"""
         import json
@@ -576,6 +690,7 @@ class ProductProcessor:
         category_dirs = self.file_utils.get_category_dir("all")
         image_dir = category_dirs / "product_images"
         merged_dir = category_dirs / "merged_images"
+        sharebar_merged_dir = category_dirs / "sharebar_merged_images"  # 🔑 新增
         
         for url in with_sharebar_urls:
             product_id = self.file_utils.extract_product_id(url)
@@ -585,8 +700,20 @@ class ProductProcessor:
             # 🔑 获取多语言名称
             lang_data = lang_mapping.get(product_id, {})
             
-            image_path = image_dir / f"{product_id}.png"
-            merged_path = merged_dir / f"{product_id}_merged.png"
+            # 🔑 优先使用 Sharebar 版本的合并图片
+            sharebar_merged_path = sharebar_merged_dir / f"{product_id}_merged.png"
+            if sharebar_merged_path.exists():
+                img_path_for_export = str(sharebar_merged_path)
+                merged_path = sharebar_merged_path
+            else:
+                # 降级使用原有 merged_images
+                merged_path = merged_dir / f"{product_id}_merged.png"
+                if merged_path.exists():
+                    img_path_for_export = str(merged_path)
+                else:
+                    image_path = image_dir / f"{product_id}.png"
+                    img_path_for_export = str(image_path) if image_path.exists() else None
+                    merged_path = None
             
             product_info = {
                 'product_id': product_id,
@@ -595,7 +722,7 @@ class ProductProcessor:
                 'name_ja': lang_data.get('ja', product_name),  # 日文
                 'name_zh': lang_data.get('zh', ''),            # 中文
                 'name_en': lang_data.get('en', ''),            # 英文
-                'image_path': str(image_path) if image_path.exists() else None,
+                'image_path':img_path_for_export,
                 'sharebar': sharebar,
                 'has_sharebar': True,
                 'merged_path': str(merged_path) if merged_path.exists() else None,
@@ -736,6 +863,13 @@ class ProductProcessor:
             await self.generate_qr_and_merge()
         else:
             self.log("⏭️ 跳过第三步：生成二维码")
+
+
+        # 🔑 第三步补充：生成 Sharebar 版本的二维码
+        if config.ENABLE_SHAREBAR_QR:
+            await self.generate_sharebar_qr()
+        else:
+            self.log("⏭️ 跳过 Sharebar 二维码生成")
         
         # 第四步：导出文档
         if config.ENABLE_EXPORT:

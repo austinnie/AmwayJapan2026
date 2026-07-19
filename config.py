@@ -46,6 +46,9 @@ class Config:
     # 第三步：生成二维码并合并图片
     # True=生成二维码, False=跳过
     ENABLE_QR = False
+    # 🔑 生成 Sharebar 版本的二维码（使用 Sharebar URL）
+    ENABLE_SHAREBAR_QR = True
+    
     
     # 第四步：导出文档（HTML/PDF/Word）
     # True=导出文档, False=跳过

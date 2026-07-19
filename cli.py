@@ -89,7 +89,8 @@ class AmwayAutomation:
                     progress=self.progress,
                     logger=self.logger
                 )
-                await processor.export_html_and_pdf()
+                #await processor.export_html_and_pdf()
+                await processor.process_all()
                 self.logger.info("✅ 文档导出完成！")
                 return
             
