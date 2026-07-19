@@ -413,6 +413,7 @@ class ProductProcessor:
     # 第三步：生成二维码并合并图片
     # ============================================================
     async def generate_qr_and_merge(self):
+        """第三步：生成二维码并合并图片（完全从映射读取，不打开网页）"""
         with_sharebar_urls = self._load_urls_from_file("list-withsharebar.txt")
         without_sharebar_urls = self._load_urls_from_file("list-withoutsharebar.txt")
         
@@ -431,7 +432,7 @@ class ProductProcessor:
         processed_qr = self._load_qr_progress()
         has_sharebar_set = set(with_sharebar_urls)
         
-        # 🔑 加载 Sharebar 映射
+        # 🔑 加载 Sharebar 映射（一次性加载）
         sharebar_data = self._load_sharebar_mapping()
         
         for i, url in enumerate(all_urls):
@@ -441,6 +442,7 @@ class ProductProcessor:
                 self.log(f"⏭️ [{i+1}/{len(all_urls)}] 产品 {product_id} 已处理，跳过")
                 continue
             
+            # 查找图片
             image_path = category_dirs / "merged_images" / f"{product_id}.png"
             if not image_path.exists():
                 image_path = category_dirs / "product_images" / f"{product_id}.png"
@@ -450,30 +452,26 @@ class ProductProcessor:
             
             self.log(f"\n📦 [{i+1}/{len(all_urls)}] 处理产品: {product_id}")
             
+            # 🔑 判断是否有 Sharebar
             if url in has_sharebar_set:
-                # ✅ 直接从映射数据读取
+                # ✅ 只从映射读取，不打开网页
                 sharebar = sharebar_data.get(product_id)
-                self.log(f"   🔍 从映射读取: {product_id} -> {sharebar if sharebar else '无'}")
                 
-                if not sharebar:
-                    # 只有没有时才重新获取
-                    self.log(f"   🔄 重新获取 Sharebar...")
-                    sharebar = await self.sharebar_handler.get_sharebar_link(url, retry=2)
-                    if sharebar:
-                        self._save_sharebar_mapping(product_id, sharebar)
-                        sharebar_data[product_id] = sharebar
-                        self.log(f"   ✅ 获取到 Sharebar: {sharebar}")
-                    else:
-                        self.log(f"   ⚠️ 获取失败，使用产品URL")
-                
-                qr_url = sharebar if sharebar else url
-                qr_type = "Sharebar" if sharebar else "产品URL(降级)"
+                if sharebar:
+                    qr_url = sharebar
+                    qr_type = "Sharebar"
+                    self.log(f"   📱 使用 Sharebar 生成二维码")
+                else:
+                    # ⚠️ 如果映射没有，降级使用产品URL（但不打开网页）
+                    qr_url = url
+                    qr_type = "产品URL(降级)"
+                    self.log(f"   ⚠️ 映射中无Sharebar，使用产品URL")
             else:
                 qr_url = url
                 qr_type = "产品URL"
+                self.log(f"   📱 使用 {qr_type} 生成二维码")
             
-            self.log(f"   📱 使用 {qr_type} 生成二维码")
-            
+            # 生成二维码
             qr_path = qr_dir / f"{product_id}_qr.png"
             qr_result = self.qr_handler.generate_qr(qr_url, qr_path)
             
@@ -493,16 +491,18 @@ class ProductProcessor:
             await asyncio.sleep(0.5)
         
         self.log("\n✅ 二维码生成和图片合并完成")
-
+    
 
     def _load_sharebar_mapping(self) -> dict:
-        """加载 Sharebar 映射"""
+        """加载 Sharebar 映射（一次性加载，供第三步使用）"""
         import json
         mapping_file = self.config.PRODUCTS_DIR / "sharebar_mapping.json"
         if mapping_file.exists():
             try:
                 with open(mapping_file, 'r', encoding='utf-8') as f:
-                    return json.load(f)
+                    data = json.load(f)
+                    self.log(f"   📊 已加载 {len(data)} 个 Sharebar 映射")
+                    return data
             except:
                 pass
         return {}
