@@ -895,9 +895,12 @@ class ProductProcessor:
         self.log("=" * 60)
 
 
+    # product_processor.py - export_single_word_docs 方法
+
     async def export_single_word_docs(self):
         """
         为每个有 Sharebar 的产品单独生成 Word 文档
+        优先使用 Sharebar 版本的合并图片
         """
         self.log("\n" + "=" * 60)
         self.log("📄 导出单个产品 Word 文档")
@@ -919,12 +922,14 @@ class ProductProcessor:
         category_dirs = self.file_utils.get_category_dir("all")
         image_dir = category_dirs / "product_images"
         merged_dir = category_dirs / "merged_images"
+        sharebar_merged_dir = category_dirs / "sharebar_merged_images"  # 🔑 新增
         
         from handlers.word_handler import WordHandler
         word_handler = WordHandler()
         
         total = len(with_sharebar_urls)
         success_count = 0
+        sharebar_img_count = 0  # 统计使用 Sharebar 图片的数量
         
         for i, url in enumerate(with_sharebar_urls):
             product_id = self.file_utils.extract_product_id(url)
@@ -941,17 +946,27 @@ class ProductProcessor:
             product_name = self._get_product_name(product_id)
             lang_data = lang_mapping.get(product_id, {})
             
-            # 图片路径
-            image_path = image_dir / f"{product_id}.png"
-            merged_path = merged_dir / f"{product_id}_merged.png"
-            
-            # 优先使用合并图片
-            if merged_path.exists():
-                img_path = str(merged_path)
-            elif image_path.exists():
-                img_path = str(image_path)
+            # 🔑 优先使用 Sharebar 版本的合并图片
+            sharebar_merged_path = sharebar_merged_dir / f"{product_id}_merged.png"
+            if sharebar_merged_path.exists():
+                img_path = str(sharebar_merged_path)
+                merged_path = sharebar_merged_path
+                sharebar_img_count += 1
+                self.log(f"   📸 使用 Sharebar 图片: {sharebar_merged_path.name}")
             else:
-                img_path = None
+                # 降级使用原有 merged_images
+                merged_path = merged_dir / f"{product_id}_merged.png"
+                if merged_path.exists():
+                    img_path = str(merged_path)
+                    self.log(f"   📸 使用原有合并图片: {merged_path.name}")
+                else:
+                    image_path = image_dir / f"{product_id}.png"
+                    if image_path.exists():
+                        img_path = str(image_path)
+                        self.log(f"   📸 使用原始图片: {image_path.name}")
+                    else:
+                        img_path = None
+                        self.log(f"   ⚠️ 无图片")
             
             # 构建产品信息
             product_info = {
@@ -964,7 +979,7 @@ class ProductProcessor:
                 'image_path': img_path,
                 'sharebar': sharebar,
                 'has_sharebar': True,
-                'merged_path': str(merged_path) if merged_path.exists() else None,
+                'merged_path': str(merged_path) if merged_path and merged_path.exists() else None,
             }
             
             # 生成文件名（使用产品ID和日文名）
@@ -982,5 +997,6 @@ class ProductProcessor:
         self.log("\n" + "=" * 60)
         self.log(f"✅ 单产品 Word 导出完成!")
         self.log(f"   成功: {success_count} / {total} 个")
+        self.log(f"   使用 Sharebar 图片: {sharebar_img_count} 个")
         self.log(f"📁 输出目录: {single_dir}")
         self.log("=" * 60)

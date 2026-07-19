@@ -154,13 +154,14 @@ class WordHandler:
         url = product.get('url', '') or ''
         info.add_run(f"   URL: {url}")
         
-        # 图片
+        # 🔑 图片（使用大图显示 Sharebar 二维码）
         merged_path = product.get('merged_path')
         if merged_path and Path(merged_path).exists():
             try:
                 para = self.doc.add_paragraph()
                 para.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 run = para.add_run()
+                # 🔑 使用 5 英寸大图，让二维码清晰可见
                 run.add_picture(str(merged_path), width=Inches(5.0))
             except Exception as e:
                 self.doc.add_paragraph(f"[图片加载失败: {e}]")
