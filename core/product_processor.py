@@ -90,6 +90,7 @@ class ProductProcessor:
         self.log("=" * 60)
     
     async def _scan_single_product(self, url: str, product_id: str) -> bool:
+        """扫描单个产品"""
         page = await self.browser.context.new_page()
         
         try:
@@ -106,7 +107,11 @@ class ProductProcessor:
                 page, product_id, image_dir
             )
             
-            sharebar = await self.sharebar_handler.get_sharebar_link(url, retry=1)
+            # 🔑 使用配置中的重试次数
+            sharebar = await self.sharebar_handler.get_sharebar_link(
+                url, 
+                retry=self.config.SHAREBAR_RETRY_COUNT
+            )
             
             self._save_product_name(product_id, product_name)
             
@@ -299,8 +304,11 @@ class ProductProcessor:
             
             self.log(f"\n📦 [{i+1}/{len(self.without_sharebar)}] 确认产品: {product_id}")
             
-            result = await self.sharebar_handler.verify_no_sharebar(url, max_retry=1)
-            
+            # 🔑 使用配置中的重试次数
+            result = await self.sharebar_handler.verify_no_sharebar(
+                url, 
+                max_retry=self.config.RETRY_COUNT
+            )
             if result['has_sharebar']:
                 product['sharebar'] = result['sharebar']
                 product['has_sharebar'] = True

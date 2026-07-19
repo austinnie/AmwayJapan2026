@@ -29,12 +29,21 @@ class Config:
     VIEWPORT_WIDTH = 1400
     VIEWPORT_HEIGHT = 1000
     
-    # ========== 功能开关（运行模式） ==========
+    # ========== 运行模式配置 ==========
     # 运行模式: "full" | "scan" | "export" | "fetch"
     RUN_MODE = "full"
     
+    # ========== 二次确认配置 ==========
     # 是否启用二次确认（对无Sharebar的产品重新检查）
     ENABLE_RETRY = False
+    
+    # 二次确认重试次数（0=不重试，1=尝试1次，3=尝试3次）
+    # 建议值：1（节省时间）或 3（更准确）
+    RETRY_COUNT = 1
+    
+    # ========== Sharebar 获取配置 ==========
+    # 获取 Sharebar 时的重试次数
+    SHAREBAR_RETRY_COUNT = 1
     
     # ========== 导出开关 ==========
     ENABLE_SHAREBAR = True
