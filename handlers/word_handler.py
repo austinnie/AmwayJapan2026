@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import List, Dict
 from datetime import datetime
 from docx import Document
-from docx.shared import Inches
+from docx.shared import Inches, Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_TABLE_ALIGNMENT
 
@@ -19,7 +19,6 @@ class WordHandler:
     
     def export_products(self, products: List[Dict], output_path: Path, 
                         category_name: str = "全产品") -> bool:
-        """导出产品数据到Word文档"""
         try:
             self.doc = Document()
             
@@ -37,9 +36,25 @@ class WordHandler:
             import traceback
             traceback.print_exc()
             return False
-    
+
+    def export_single_product(self, product: Dict, output_path: Path) -> bool:
+        """
+        导出单个产品到独立的Word文档
+        """
+        try:
+            self.doc = Document()
+            
+            self._add_single_product(product)
+            
+            self.doc.save(str(output_path))
+            print(f"✅ 单产品Word已生成: {output_path.name}")
+            return True
+            
+        except Exception as e:
+            print(f"❌ 单产品Word导出失败: {e}")
+            return False
+            
     def _add_title(self, category_name: str):
-        """添加标题"""
         title = self.doc.add_heading(f"安利日本产品目录 - {category_name}", 0)
         title.alignment = WD_ALIGN_PARAGRAPH.CENTER
         
@@ -48,7 +63,6 @@ class WordHandler:
         self.doc.add_paragraph()
     
     def _add_stats(self, products: List[Dict]):
-        """添加统计信息"""
         total = len(products)
         with_sharebar = sum(1 for p in products if p.get('has_sharebar', False))
         without_sharebar = total - with_sharebar
@@ -61,14 +75,14 @@ class WordHandler:
         self.doc.add_paragraph()
     
     def _add_summary_table(self, products: List[Dict]):
-        """添加产品汇总表格"""
+        """汇总表：显示三语名称"""
         self.doc.add_heading("产品汇总表", level=1)
         
-        table = self.doc.add_table(rows=1, cols=5)
+        table = self.doc.add_table(rows=1, cols=6)
         table.style = 'Table Grid'
         table.alignment = WD_TABLE_ALIGNMENT.CENTER
         
-        headers = ['序号', '产品ID', '产品名称', 'Sharebar状态', '链接']
+        headers = ['序号', '产品ID', '日文名称', '中文名称', '英文名称', '状态']
         for i, header in enumerate(headers):
             cell = table.rows[0].cells[i]
             cell.text = header
@@ -77,70 +91,89 @@ class WordHandler:
         for idx, product in enumerate(products, 1):
             row = table.add_row()
             row.cells[0].text = str(idx)
-            
-            # 🔑 安全获取值，确保不为 None
-            product_id = product.get('product_id', '') or ''
-            row.cells[1].text = product_id
-            
-            name = product.get('name', '未知产品') or '未知产品'
-            row.cells[2].text = name[:30] if name else '未知产品'
-            
-            row.cells[3].text = '有' if product.get('has_sharebar') else '无'
-            
-            sharebar = product.get('sharebar', '') or ''
-            url = product.get('url', '') or ''
-            link = sharebar or url
-            row.cells[4].text = link[:50] if link else '无'
+            row.cells[1].text = product.get('product_id', '') or ''
+            row.cells[2].text = (product.get('name_ja') or product.get('name') or '')[:30]
+            row.cells[3].text = (product.get('name_zh') or '')[:30]
+            row.cells[4].text = (product.get('name_en') or '')[:30]
+            row.cells[5].text = '有' if product.get('has_sharebar') else '无'
         
         self.doc.add_paragraph()
     
     def _add_product_details(self, products: List[Dict]):
-        """添加每个产品的详细信息页"""
+        """详细信息：显示三语名称 + 大图"""
         self.doc.add_page_break()
         self.doc.add_heading("产品详细信息", level=1)
         
         for idx, product in enumerate(products, 1):
-            if idx > 1 and idx % 10 == 1:
+            if idx > 1 and idx % 8 == 1:
                 self.doc.add_page_break()
             
-            name = product.get('name', '未知产品') or '未知产品'
-            self.doc.add_heading(f"{idx}. {name}", level=2)
-            
-            info = self.doc.add_paragraph()
-            
-            product_id = product.get('product_id', '') or ''
-            info.add_run("产品ID: ").bold = True
-            info.add_run(f"{product_id}\n")
-            
-            url = product.get('url', '') or ''
-            info.add_run("URL: ").bold = True
-            info.add_run(f"{url}\n")
-            
-            sharebar = product.get('sharebar', '') or ''
-            info.add_run("Sharebar: ").bold = True
-            info.add_run(f"{sharebar if sharebar else '无'}\n")
-            
-            info.add_run("状态: ").bold = True
-            info.add_run(f"{'有Sharebar' if product.get('has_sharebar') else '无Sharebar'}")
-            
-            merged_path = product.get('merged_path')
-            if merged_path and Path(merged_path).exists():
-                try:
-                    para = self.doc.add_paragraph()
-                    para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    run = para.add_run()
-                    run.add_picture(str(merged_path), width=Inches(4.0))
-                except Exception as e:
-                    self.doc.add_paragraph(f"[图片加载失败: {e}]")
-            elif product.get('image_path') and Path(product['image_path']).exists():
-                try:
-                    para = self.doc.add_paragraph()
-                    para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    run = para.add_run()
-                    run.add_picture(str(product['image_path']), width=Inches(3.0))
-                except:
-                    self.doc.add_paragraph("[无图片]")
-            else:
+            self._add_single_product(product, idx)
+    
+    def _add_single_product(self, product: Dict, idx: int = None):
+        """
+        添加单个产品的详细信息（可被独立导出复用）
+        """
+        # 三语名称
+        name_ja = (product.get('name_ja') or product.get('name') or '未知产品')
+        name_zh = product.get('name_zh') or ''
+        name_en = product.get('name_en') or ''
+        product_id = product.get('product_id', '') or ''
+        
+        # 标题：显示序号 + 日文
+        if idx:
+            heading = f"{idx}. {name_ja}"
+        else:
+            heading = f"产品: {name_ja}"
+        self.doc.add_heading(heading, level=2)
+        
+        # 产品ID
+        id_para = self.doc.add_paragraph()
+        id_para.add_run(f"产品ID: ").bold = True
+        id_para.add_run(f"{product_id}")
+        
+        # 多语言名称区块
+        p = self.doc.add_paragraph()
+        p.add_run("📝 多语言名称\n").bold = True
+        p.add_run(f"   🇯🇵 日文: {name_ja}\n")
+        if name_zh:
+            p.add_run(f"   🇨🇳 中文: {name_zh}\n")
+        if name_en:
+            p.add_run(f"   🇬🇧 英文: {name_en}\n")
+        
+        # 基本信息
+        info = self.doc.add_paragraph()
+        info.add_run("🔗 基本信息\n").bold = True
+        
+        sharebar = product.get('sharebar', '') or ''
+        info.add_run(f"   Sharebar: {sharebar if sharebar else '无'}\n")
+        
+        status = '有Sharebar ✅' if product.get('has_sharebar') else '无Sharebar ❌'
+        info.add_run(f"   状态: {status}\n")
+        
+        url = product.get('url', '') or ''
+        info.add_run(f"   URL: {url}")
+        
+        # 图片
+        merged_path = product.get('merged_path')
+        if merged_path and Path(merged_path).exists():
+            try:
+                para = self.doc.add_paragraph()
+                para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                run = para.add_run()
+                run.add_picture(str(merged_path), width=Inches(5.0))
+            except Exception as e:
+                self.doc.add_paragraph(f"[图片加载失败: {e}]")
+        elif product.get('image_path') and Path(product['image_path']).exists():
+            try:
+                para = self.doc.add_paragraph()
+                para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                run = para.add_run()
+                run.add_picture(str(product['image_path']), width=Inches(4.0))
+            except:
                 self.doc.add_paragraph("[无图片]")
-            
-            self.doc.add_paragraph('_' * 60)
+        else:
+            self.doc.add_paragraph("[无图片]")
+        
+        self.doc.add_paragraph('_' * 60)
+        

@@ -708,7 +708,7 @@ class ProductProcessor:
     # ============================================================
     # 主入口
     # ============================================================
-    # core/product_processor.py
+    # product_processor.py - process_all 方法
 
     async def process_all(self):
         """
@@ -739,7 +739,17 @@ class ProductProcessor:
         
         # 第四步：导出文档
         if config.ENABLE_EXPORT:
-            await self.export_html_and_pdf()
+            # 导出汇总文档
+            if config.ENABLE_SUMMARY_EXPORT:
+                await self.export_html_and_pdf()
+            else:
+                self.log("⏭️ 跳过汇总文档导出")
+            
+            # 🔑 导出单个产品的 Word 文档
+            if config.ENABLE_SINGLE_WORD:
+                await self.export_single_word_docs()
+            else:
+                self.log("⏭️ 跳过单产品 Word 导出")
         else:
             self.log("⏭️ 跳过第四步：导出文档")
         
@@ -748,4 +758,95 @@ class ProductProcessor:
         self.log(f"   有 Sharebar: {len(self.with_sharebar)} 个")
         self.log(f"   无 Sharebar: {len(self.without_sharebar)} 个")
         self.log(f"📁 输出目录: {self.config.EXPORTS_DIR}")
+        self.log("=" * 60)
+
+
+    async def export_single_word_docs(self):
+        """
+        为每个有 Sharebar 的产品单独生成 Word 文档
+        """
+        self.log("\n" + "=" * 60)
+        self.log("📄 导出单个产品 Word 文档")
+        self.log("=" * 60)
+        
+        with_sharebar_urls = self._load_urls_from_file("list-withsharebar.txt")
+        
+        if not with_sharebar_urls:
+            self.log("⚠️ 没有有 Sharebar 的产品")
+            return
+        
+        # 🔑 加载多语言映射
+        lang_mapping = self._load_lang_mapping()
+        
+        # 创建单产品目录
+        single_dir = self.config.EXPORTS_DIR / "single_products"
+        single_dir.mkdir(parents=True, exist_ok=True)
+        
+        category_dirs = self.file_utils.get_category_dir("all")
+        image_dir = category_dirs / "product_images"
+        merged_dir = category_dirs / "merged_images"
+        
+        from handlers.word_handler import WordHandler
+        word_handler = WordHandler()
+        
+        total = len(with_sharebar_urls)
+        success_count = 0
+        
+        for i, url in enumerate(with_sharebar_urls):
+            product_id = self.file_utils.extract_product_id(url)
+            
+            self.log(f"\n📦 [{i+1}/{total}] 导出产品: {product_id}")
+            
+            # 获取 Sharebar
+            sharebar = self._get_sharebar_from_mapping(product_id)
+            if not sharebar:
+                self.log(f"   ⚠️ 无 Sharebar，跳过")
+                continue
+            
+            # 获取产品名称
+            product_name = self._get_product_name(product_id)
+            lang_data = lang_mapping.get(product_id, {})
+            
+            # 图片路径
+            image_path = image_dir / f"{product_id}.png"
+            merged_path = merged_dir / f"{product_id}_merged.png"
+            
+            # 优先使用合并图片
+            if merged_path.exists():
+                img_path = str(merged_path)
+            elif image_path.exists():
+                img_path = str(image_path)
+            else:
+                img_path = None
+            
+            # 构建产品信息
+            product_info = {
+                'product_id': product_id,
+                'url': url,
+                'name': product_name,
+                'name_ja': lang_data.get('ja', product_name),
+                'name_zh': lang_data.get('zh', ''),
+                'name_en': lang_data.get('en', ''),
+                'image_path': img_path,
+                'sharebar': sharebar,
+                'has_sharebar': True,
+                'merged_path': str(merged_path) if merged_path.exists() else None,
+            }
+            
+            # 生成文件名（使用产品ID和日文名）
+            safe_name = product_name.replace('/', '_').replace('\\', '_').replace(':', '_')[:30]
+            filename = f"{product_id}_{safe_name}.docx"
+            output_path = single_dir / filename
+            
+            # 导出单个产品
+            if word_handler.export_single_product(product_info, output_path):
+                success_count += 1
+            
+            # 避免过快
+            await asyncio.sleep(0.1)
+        
+        self.log("\n" + "=" * 60)
+        self.log(f"✅ 单产品 Word 导出完成!")
+        self.log(f"   成功: {success_count} / {total} 个")
+        self.log(f"📁 输出目录: {single_dir}")
         self.log("=" * 60)

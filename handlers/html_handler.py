@@ -13,14 +13,15 @@ class HTMLHandler:
     """HTML处理器"""
     
     # ============================================================
-    # 路径配置
+    # 路径配置 - 根据实际情况调整
     # ============================================================
     
-
+    # 合并图片（带二维码）的路径前缀
     IMG_SRC_PREFIX = "images/"
+    
+    # 原始产品图片的路径前缀（备用）
     IMG_SRC_PREFIX_ORIGINAL = "images/"
 
-    
     # ============================================================
     # 微信公众号适配模板（1列布局）
     # ============================================================
@@ -129,97 +130,89 @@ class HTMLHandler:
         .product-list {{
             display: flex;
             flex-direction: column;
-            gap: 14px;
+            gap: 18px;
         }}
         
+        /* 🔑 卡片改为纵向布局，图片更大 */
         .product-card {{
             display: flex;
+            flex-direction: column;
             background: #fafbfc;
-            border-radius: 12px;
+            border-radius: 16px;
             overflow: hidden;
             border: 1px solid #eef1f5;
             transition: all 0.2s;
-            align-items: stretch;
         }}
         .product-card:hover {{
             border-color: #1a237e;
             box-shadow: 0 4px 16px rgba(26,35,126,0.10);
         }}
         
-        /* 图片区域 - 固定宽度正方形 */
+        /* 🔑 图片区域 - 更大，铺满宽度 */
         .product-card .image-wrap {{
-            flex: 0 0 120px;
-            width: 120px;
-            height: 120px;
+            width: 100%;
+            height: auto;
+            min-height: 280px;
+            max-height: 400px;
             background: #f7f8fa;
             overflow: hidden;
             display: flex;
             align-items: center;
             justify-content: center;
+            padding: 12px;
         }}
         .product-card .image-wrap img {{
             width: 100%;
             height: 100%;
+            max-height: 380px;
             object-fit: contain;
-            padding: 6px;
             background: #ffffff;
+            border-radius: 8px;
         }}
         
         /* 信息区域 */
         .product-card .info {{
-            flex: 1;
-            padding: 10px 14px 10px 12px;
+            padding: 14px 18px 18px;
             display: flex;
             flex-direction: column;
-            justify-content: center;
-            min-width: 0;
+            gap: 4px;
         }}
         .product-card .id {{
-            font-size: 11px;
+            font-size: 12px;
             color: #bbb;
             font-weight: 500;
         }}
-        /* 🔑 多语言名称样式 */
-        /* 产品名称 - 日文 */
+        
+        /* 🔑 多语言名称样式 - 字体更大 */
         .product-card .name {{
-            font-size: 15px;
-            font-weight: 600;
+            font-size: 18px;
+            font-weight: 700;
             color: #1a237e;
             margin: 2px 0 2px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
+            line-height: 1.4;
         }}
-        
-        /* 产品名称 - 中文 */
         .product-card .name-zh {{
-            font-size: 13px;
-            color: #666;
+            font-size: 15px;
+            color: #555;
             margin: 1px 0;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
+            line-height: 1.4;
         }}
-        
-        /* 产品名称 - 英文 */
         .product-card .name-en {{
-            font-size: 12px;
-            color: #999;
+            font-size: 13px;
+            color: #888;
             margin: 1px 0;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
             font-style: italic;
+            line-height: 1.4;
         }}
         
         .product-card .badge {{
             display: inline-block;
-            padding: 1px 10px;
-            border-radius: 12px;
-            font-size: 10px;
+            padding: 2px 14px;
+            border-radius: 20px;
+            font-size: 12px;
             font-weight: 600;
             width: fit-content;
-            margin-top: 2px;
+            margin-top: 4px;
         }}
         .product-card .badge.success {{
             background: #e8f5e9;
@@ -231,13 +224,13 @@ class HTMLHandler:
         }}
         
         .product-card .sharebar {{
-            font-size: 11px;
+            font-size: 12px;
             color: #4caf50;
             word-break: break-all;
             margin-top: 4px;
             background: #f0f2f5;
-            padding: 2px 8px;
-            border-radius: 4px;
+            padding: 4px 12px;
+            border-radius: 6px;
             font-family: "SF Mono", monospace;
         }}
         .product-card .sharebar.no {{
@@ -292,14 +285,16 @@ class HTMLHandler:
             .header h1 {{ font-size: 18px; }}
             
             .product-card .image-wrap {{
-                flex: 0 0 90px;
-                width: 90px;
-                height: 90px;
+                min-height: 200px;
+                max-height: 280px;
             }}
-            .product-card .info {{ padding: 8px 10px; }}
-            .product-card .name {{ font-size: 13px; }}
-            .product-card .name-zh {{ font-size: 11px; }}
-            .product-card .name-en {{ font-size: 10px; }}
+            .product-card .image-wrap img {{
+                max-height: 260px;
+            }}
+            .product-card .info {{ padding: 12px 14px; }}
+            .product-card .name {{ font-size: 16px; }}
+            .product-card .name-zh {{ font-size: 13px; }}
+            .product-card .name-en {{ font-size: 11px; }}
             .stats .num {{ font-size: 20px; }}
             .product-card .sharebar {{ font-size: 10px; }}
         }}

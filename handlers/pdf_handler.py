@@ -28,8 +28,6 @@ class PDFHandler:
         
         print("❌ 所有PDF转换方式都失败")
         return False
-    
-
 
     # handlers/pdf_handler.py
 
@@ -40,24 +38,26 @@ class PDFHandler:
             
             async with async_playwright() as p:
                 browser = await p.chromium.launch(headless=True)
-                page = await browser.new_page()
+                page = await browser.new_page(
+                    viewport={"width": 1280, "height": 2000}  # 🔑 更大的视口，让图片更清晰
+                )
                 
-                # 🔑 使用绝对路径加载 HTML
                 html_abs_path = html_path.absolute()
                 await page.goto(f"file:///{html_abs_path}", wait_until="networkidle")
                 
                 # 等待图片加载
-                await page.wait_for_timeout(2000)
+                await page.wait_for_timeout(3000)
                 
                 await page.pdf(
                     path=str(pdf_path),
                     format="A4",
                     print_background=True,
+                    scale=0.9,  # 🔑 缩放让内容适应页面
                     margin={
-                        "top": "20mm",
-                        "bottom": "20mm",
-                        "left": "15mm",
-                        "right": "15mm"
+                        "top": "15mm",
+                        "bottom": "15mm",
+                        "left": "12mm",
+                        "right": "12mm"
                     }
                 )
                 await browser.close()
@@ -68,7 +68,6 @@ class PDFHandler:
         except Exception as e:
             print(f"⚠️ Playwright转换失败: {e}")
             return False
-            
         
     def _convert_with_wkhtmltopdf(self, html_path: Path, pdf_path: Path) -> bool:
         """使用wkhtmltopdf转换PDF"""
