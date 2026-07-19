@@ -2,6 +2,7 @@
 """
 使用 Sharebar 版本的合并图片导出文档
 优先使用 sharebar_merged_images 中的图片
+支持：汇总文档 + 单个产品 Word 文档
 """
 import asyncio
 import json
@@ -75,6 +76,28 @@ class SharebarDocExporter:
     def _get_sharebar(self, product_id: str) -> str:
         return self.sharebar_mapping.get(product_id)
     
+    def _find_image(self, product_id: str) -> tuple:
+        """
+        查找产品图片
+        返回: (img_path, merged_path)
+        """
+        # 1. 优先使用 Sharebar 合并图片
+        sharebar_path = self.sharebar_merged_dir / f"{product_id}_merged.png"
+        if sharebar_path.exists():
+            return str(sharebar_path), sharebar_path
+        
+        # 2. 降级使用原有 merged_images
+        merged_path = self.merged_dir / f"{product_id}_merged.png"
+        if merged_path.exists():
+            return str(merged_path), merged_path
+        
+        # 3. 使用原始图片
+        image_path = self.image_dir / f"{product_id}.png"
+        if image_path.exists():
+            return str(image_path), None
+        
+        return None, None
+    
     def _build_product_info(self, url: str, has_sharebar: bool = True) -> dict:
         """构建产品信息"""
         product_id = self.file_utils.extract_product_id(url)
@@ -82,20 +105,7 @@ class SharebarDocExporter:
         lang_data = self.lang_mapping.get(product_id, {})
         sharebar = self._get_sharebar(product_id) if has_sharebar else None
         
-        # 🔑 优先使用 Sharebar 合并图片
-        sharebar_merged_path = self.sharebar_merged_dir / f"{product_id}_merged.png"
-        if sharebar_merged_path.exists():
-            img_path = str(sharebar_merged_path)
-            merged_path = sharebar_merged_path
-        else:
-            # 降级使用原有 merged_images
-            merged_path = self.merged_dir / f"{product_id}_merged.png"
-            if merged_path.exists():
-                img_path = str(merged_path)
-            else:
-                image_path = self.image_dir / f"{product_id}.png"
-                img_path = str(image_path) if image_path.exists() else None
-                merged_path = None
+        img_path, merged_path = self._find_image(product_id)
         
         return {
             'product_id': product_id,
@@ -107,12 +117,17 @@ class SharebarDocExporter:
             'image_path': img_path,
             'sharebar': sharebar,
             'has_sharebar': has_sharebar,
-            'merged_path': str(merged_path) if merged_path and merged_path.exists() else None,
+            'merged_path': str(merged_path) if merged_path else None,
             'lang': lang_data
         }
     
-    async def export(self):
-        """导出所有文档"""
+    async def export(self, export_single: bool = True):
+        """
+        导出所有文档
+        
+        Args:
+            export_single: 是否导出单个产品 Word 文档
+        """
         print("\n" + "=" * 60)
         print("📄 使用 Sharebar 合并图片导出文档")
         print("=" * 60)
@@ -123,10 +138,13 @@ class SharebarDocExporter:
         without_sharebar_products = []
         
         # 有 Sharebar 的产品
+        sharebar_img_count = 0
         for url in self.with_sharebar_urls:
             info = self._build_product_info(url, has_sharebar=True)
             all_products.append(info)
             with_sharebar_products.append(info)
+            if info.get('image_path') and 'sharebar_merged_images' in info['image_path']:
+                sharebar_img_count += 1
         
         # 无 Sharebar 的产品
         for url in self.without_sharebar_urls:
@@ -138,62 +156,118 @@ class SharebarDocExporter:
         print(f"   有 Sharebar: {len(with_sharebar_products)}")
         print(f"   无 Sharebar: {len(without_sharebar_products)}")
         print(f"   共: {len(all_products)}")
-        
-        # 检查有多少产品使用了 Sharebar 图片
-        sharebar_img_count = sum(
-            1 for p in all_products 
-            if p.get('image_path') and 'sharebar_merged_images' in p['image_path']
-        )
         print(f"   ✅ 使用 Sharebar 合并图片: {sharebar_img_count}")
         
         # 导出目录
         exports_dir = self.exports_dir
         exports_dir.mkdir(parents=True, exist_ok=True)
         
-        # 导出全产品
+        # ============================================================
+        # 1. 导出汇总文档
+        # ============================================================
+        print("\n" + "-" * 40)
+        print("📄 导出汇总文档")
+        print("-" * 40)
+        
+        # 全产品
         base_name = "安利日本产品目录_Sharebar版"
         html_path = exports_dir / f"{base_name}.html"
         pdf_path = exports_dir / f"{base_name}.pdf"
         word_path = exports_dir / f"{base_name}.docx"
         
-        print(f"\n📄 导出全产品...")
+        print(f"   📄 全产品...")
         self.html_handler.export_products(all_products, html_path, "全产品(Sharebar版)")
         await self.pdf_handler.export_products(all_products, pdf_path, "全产品(Sharebar版)")
         self.word_handler.export_products(all_products, word_path, "全产品(Sharebar版)")
         
-        # 导出有 Sharebar 的产品
+        # 有 Sharebar 的产品
         if with_sharebar_products:
-            print(f"📄 导出有 Sharebar 产品...")
             base_name = "有Sharebar产品_Sharebar版"
             html_path = exports_dir / f"{base_name}.html"
             pdf_path = exports_dir / f"{base_name}.pdf"
             word_path = exports_dir / f"{base_name}.docx"
             
+            print(f"   📄 有 Sharebar 产品...")
             self.html_handler.export_products(with_sharebar_products, html_path, "有Sharebar产品(Sharebar版)")
             await self.pdf_handler.export_products(with_sharebar_products, pdf_path, "有Sharebar产品(Sharebar版)")
             self.word_handler.export_products(with_sharebar_products, word_path, "有Sharebar产品(Sharebar版)")
         
-        # 导出无 Sharebar 的产品
+        # 无 Sharebar 的产品
         if without_sharebar_products:
-            print(f"📄 导出无 Sharebar 产品...")
             base_name = "无Sharebar产品_Sharebar版"
             html_path = exports_dir / f"{base_name}.html"
             pdf_path = exports_dir / f"{base_name}.pdf"
             word_path = exports_dir / f"{base_name}.docx"
             
+            print(f"   📄 无 Sharebar 产品...")
             self.html_handler.export_products(without_sharebar_products, html_path, "无Sharebar产品(Sharebar版)")
             await self.pdf_handler.export_products(without_sharebar_products, pdf_path, "无Sharebar产品(Sharebar版)")
             self.word_handler.export_products(without_sharebar_products, word_path, "无Sharebar产品(Sharebar版)")
         
+        # ============================================================
+        # 2. 导出单个产品 Word 文档
+        # ============================================================
+        if export_single:
+            print("\n" + "-" * 40)
+            print("📄 导出单个产品 Word 文档")
+            print("-" * 40)
+            
+            single_dir = exports_dir / "single_products_sharebar"
+            single_dir.mkdir(parents=True, exist_ok=True)
+            
+            total = len(with_sharebar_products)
+            success_count = 0
+            single_sharebar_count = 0
+            
+            for i, product in enumerate(with_sharebar_products, 1):
+                product_id = product['product_id']
+                name_ja = product.get('name_ja', product.get('name', product_id))
+                
+                print(f"   [{i}/{total}] {product_id}: {name_ja[:30]}...")
+                
+                # 检查是否有 Sharebar 图片
+                if product.get('image_path') and 'sharebar_merged_images' in product['image_path']:
+                    single_sharebar_count += 1
+                
+                # 生成文件名
+                safe_name = name_ja.replace('/', '_').replace('\\', '_').replace(':', '_')[:30]
+                filename = f"{product_id}_{safe_name}.docx"
+                output_path = single_dir / filename
+                
+                if self.word_handler.export_single_product(product, output_path):
+                    success_count += 1
+                
+                await asyncio.sleep(0.05)
+            
+            print(f"\n   📊 单产品导出统计:")
+            print(f"      成功: {success_count} / {total}")
+            print(f"      使用 Sharebar 图片: {single_sharebar_count}")
+            print(f"      📁 目录: {single_dir}")
+        
+        # ============================================================
+        # 完成
+        # ============================================================
         print("\n" + "=" * 60)
         print("✅ 导出完成!")
         print(f"📁 输出目录: {exports_dir}")
+        if export_single:
+            print(f"📁 单产品目录: {exports_dir / 'single_products_sharebar'}")
         print("=" * 60)
 
 
 async def main():
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="使用 Sharebar 图片导出文档")
+    parser.add_argument(
+        "--no-single",
+        action="store_true",
+        help="不导出单个产品 Word 文档"
+    )
+    args = parser.parse_args()
+    
     exporter = SharebarDocExporter()
-    await exporter.export()
+    await exporter.export(export_single=not args.no_single)
 
 
 if __name__ == "__main__":
