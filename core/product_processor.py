@@ -265,7 +265,7 @@ class ProductProcessor:
         return f"产品 {product_id}" if product_id else "未知产品"
     
     # ============================================================
-    # 第二步：二次确认
+    # 第二步：二次确认（支持断点续传）
     # ============================================================
     async def verify_no_sharebar(self):
         if not self.without_sharebar:
@@ -277,12 +277,25 @@ class ProductProcessor:
         self.log("=" * 60)
         self.log(f"📊 共 {len(self.without_sharebar)} 个产品需要确认")
         
+        # 🔑 加载二次确认进度
+        verified_progress = self._load_verified_progress()
+        
         confirmed_with_sharebar = []
         confirmed_without_sharebar = []
         
         for i, product in enumerate(self.without_sharebar):
             product_id = product['product_id']
             url = product['url']
+            
+            # 🔑 跳过已确认的
+            if product_id in verified_progress:
+                # 从已确认列表中恢复状态
+                if product.get('has_sharebar'):
+                    confirmed_with_sharebar.append(product)
+                else:
+                    confirmed_without_sharebar.append(product)
+                self.log(f"⏭️ [{i+1}/{len(self.without_sharebar)}] 产品 {product_id} 已确认，跳过")
+                continue
             
             self.log(f"\n📦 [{i+1}/{len(self.without_sharebar)}] 确认产品: {product_id}")
             
@@ -296,6 +309,9 @@ class ProductProcessor:
             else:
                 confirmed_without_sharebar.append(product)
                 self.log(f"   ❌ 确认无 Sharebar")
+            
+            # 🔑 每确认一个立即保存进度
+            self._save_verified_progress(product_id, result['has_sharebar'])
         
         self.with_sharebar.extend(confirmed_with_sharebar)
         self.without_sharebar = confirmed_without_sharebar
@@ -306,7 +322,34 @@ class ProductProcessor:
         self.log(f"   新增有 Sharebar: {len(confirmed_with_sharebar)} 个")
         self.log(f"   确认无 Sharebar: {len(confirmed_without_sharebar)} 个")
         self.log("=" * 60)
-    
+
+
+    # ============================================================
+    # 二次确认进度管理
+    # ============================================================
+    def _load_verified_progress(self) -> dict:
+        """加载二次确认进度"""
+        progress_file = self.config.PRODUCTS_DIR / "verified_progress.json"
+        if progress_file.exists():
+            try:
+                import json
+                with open(progress_file, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except:
+                pass
+        return {}
+
+    def _save_verified_progress(self, product_id: str, has_sharebar: bool):
+        """保存单个产品二次确认进度"""
+        import json
+        progress_file = self.config.PRODUCTS_DIR / "verified_progress.json"
+        
+        data = self._load_verified_progress()
+        data[product_id] = has_sharebar
+        
+        with open(progress_file, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        
     # ============================================================
     # 第三步：生成二维码并合并图片
     # ============================================================
