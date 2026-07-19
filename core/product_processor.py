@@ -96,6 +96,11 @@ class ProductProcessor:
         try:
             await page.goto(url, wait_until="domcontentloaded", timeout=30000)
             await asyncio.sleep(2)
+
+            # 🔑 检查页面是否有效（404 错误页面）
+            if await self._is_invalid_page(page):
+                self.log(f"   ❌ 页面无效（404或错误页面），跳过")
+                return False
             
             product_name = await self._extract_product_name(page, product_id)
             
@@ -144,7 +149,51 @@ class ProductProcessor:
             return False
         finally:
             await page.close()
-    
+
+
+    async def _is_invalid_page(self, page) -> bool:
+        """
+        检查页面是否无效（404错误页面）
+        返回 True 表示无效
+        """
+        try:
+            # 1. 检查页面标题
+            title = await page.title()
+            if title:
+                error_keywords = ['見つかりません', '見つからない', '404', 'Not Found', 'not-found']
+                for keyword in error_keywords:
+                    if keyword.lower() in title.lower():
+                        self.log(f"   ⚠️ 检测到错误页面: {title}")
+                        return True
+            
+            # 2. 检查页面内容
+            page_text = await page.inner_text('body')
+            error_indicators = [
+                'ご指定のページが見つかりません',
+                'ページが見つかりません',
+                '該当のページが見つかりません',
+                'お探しのページは見つかりません',
+                '404 Not Found',
+                'ページが存在しません',
+                '申し訳ございません'
+            ]
+            for indicator in error_indicators:
+                if indicator in page_text:
+                    self.log(f"   ⚠️ 检测到错误页面: {indicator}")
+                    return True
+            
+            # 3. 检查URL是否包含not-found
+            current_url = page.url
+            if 'not-found' in current_url.lower() or '404' in current_url:
+                self.log(f"   ⚠️ URL包含错误标识: {current_url}")
+                return True
+            
+            return False
+            
+        except Exception as e:
+            self.log(f"   ⚠️ 检查页面有效性失败: {e}")
+            return False
+        
     def _save_product_name(self, product_id: str, product_name: str):
         import json
         name_file = self.config.PRODUCTS_DIR / "product_names.json"
@@ -202,6 +251,18 @@ class ProductProcessor:
     
     async def _extract_product_name(self, page, product_id: str = "") -> str:
         try:
+
+            # 🔑 先检查是否错误页面
+            page_text = await page.inner_text('body')
+            error_indicators = [
+                'ご指定のページが見つかりません',
+                'ページが見つかりません',
+                '該当のページが見つかりません'
+            ]
+            for indicator in error_indicators:
+                if indicator in page_text:
+                    return f"[无效产品] {product_id}"
+                
             title = await page.title()
             if title:
                 suffixes = [
