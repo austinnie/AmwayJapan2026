@@ -90,3 +90,13 @@ products/*/results/
 # ============================================================
 playwright/
 test-results/
+
+# ============================================================
+# 例外：保留这些 JSON 文件（项目数据资产）
+# ============================================================
+!products/product_names.json
+!products/sharebar_mapping.json
+!products/product_lang_mapping.json
+!products/processed_products.json
+!products/qr_progress.json
+!products/verified_progress.json
