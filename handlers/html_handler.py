@@ -16,13 +16,10 @@ class HTMLHandler:
     # 路径配置
     # ============================================================
     
-<<<<<<< HEAD
+
     IMG_SRC_PREFIX = "images/"
     IMG_SRC_PREFIX_ORIGINAL = "images/"
-=======
-    IMG_SRC_PREFIX = "../products/all/merged_images/"
-    IMG_SRC_PREFIX_ORIGINAL = "../products/all/product_images/"
->>>>>>> d18774987b117fa2869730ad4b0f667a1beaef7c
+
     
     # ============================================================
     # 微信公众号适配模板（1列布局）
@@ -182,14 +179,37 @@ class HTMLHandler:
             color: #bbb;
             font-weight: 500;
         }}
+        /* 🔑 多语言名称样式 */
+        /* 产品名称 - 日文 */
         .product-card .name {{
             font-size: 15px;
             font-weight: 600;
             color: #1a237e;
-            margin: 2px 0 4px;
+            margin: 2px 0 2px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+        }}
+        
+        /* 产品名称 - 中文 */
+        .product-card .name-zh {{
+            font-size: 13px;
+            color: #666;
+            margin: 1px 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }}
+        
+        /* 产品名称 - 英文 */
+        .product-card .name-en {{
+            font-size: 12px;
+            color: #999;
+            margin: 1px 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-style: italic;
         }}
         
         .product-card .badge {{
@@ -199,6 +219,7 @@ class HTMLHandler:
             font-size: 10px;
             font-weight: 600;
             width: fit-content;
+            margin-top: 2px;
         }}
         .product-card .badge.success {{
             background: #e8f5e9;
@@ -277,6 +298,8 @@ class HTMLHandler:
             }}
             .product-card .info {{ padding: 8px 10px; }}
             .product-card .name {{ font-size: 13px; }}
+            .product-card .name-zh {{ font-size: 11px; }}
+            .product-card .name-en {{ font-size: 10px; }}
             .stats .num {{ font-size: 20px; }}
             .product-card .sharebar {{ font-size: 10px; }}
         }}
@@ -397,38 +420,39 @@ class HTMLHandler:
     # 生成卡片
     # ============================================================
     
+    # handlers/html_handler.py
+
     def _generate_cards(self, products: List[Dict]) -> str:
-        """生成产品卡片HTML"""
+        """生成产品卡片HTML（显示多语言名称）"""
         cards = []
         for p in products:
             product_id = p.get('product_id', '') or ''
-            name = p.get('name', '未知产品') or '未知产品'
+            
+            # 🔑 获取多语言名称
+            name_ja = p.get('name_ja', p.get('name', '未知产品')) or '未知产品'
+            name_zh = p.get('name_zh', '') or ''
+            name_en = p.get('name_en', '') or ''
             sharebar = p.get('sharebar', '') or ''
             
-<<<<<<< HEAD
-            # 🔑 图片处理
+            # 图片处理 - 🔑 修复：加上路径前缀
             merged_path = p.get('merged_path')
             if merged_path and Path(merged_path).exists():
                 image_filename = Path(merged_path).name
-                # ✅ 使用 images/ 目录
-=======
-            # 🔑 使用配置的图片路径
-            merged_path = p.get('merged_path')
-            if merged_path and Path(merged_path).exists():
-                image_filename = Path(merged_path).name
->>>>>>> d18774987b117fa2869730ad4b0f667a1beaef7c
-                image_html = f'<img class="image" src="{self.IMG_SRC_PREFIX}{image_filename}" alt="{name}">'
+                image_html = f'<img class="image" src="{self.IMG_SRC_PREFIX}{image_filename}" alt="{name_ja}">'
             else:
                 image_path = p.get('image_path')
                 if image_path and Path(image_path).exists():
                     image_filename = Path(image_path).name
-<<<<<<< HEAD
-                    # ✅ 使用 images/ 目录
-=======
->>>>>>> d18774987b117fa2869730ad4b0f667a1beaef7c
-                    image_html = f'<img class="image" src="{self.IMG_SRC_PREFIX_ORIGINAL}{image_filename}" alt="{name}">'
+                    image_html = f'<img class="image" src="{self.IMG_SRC_PREFIX}{image_filename}" alt="{name_ja}">'
                 else:
                     image_html = '<div class="image" style="display:flex;align-items:center;justify-content:center;color:#ccc;">无图片</div>'
+            
+            # 🔑 多语言名称显示
+            name_html = f'<div class="name">{name_ja}</div>'
+            if name_zh:
+                name_html += f'<div class="name-zh">{name_zh}</div>'
+            if name_en:
+                name_html += f'<div class="name-en">{name_en}</div>'
             
             sharebar_status = (
                 f'<span class="badge success">✅ 有Sharebar</span>'
@@ -443,10 +467,12 @@ class HTMLHandler:
             
             card = f'''
             <div class="product-card">
-                {image_html}
+                <div class="image-wrap">
+                    {image_html}
+                </div>
                 <div class="info">
                     <div class="id">#{product_id}</div>
-                    <div class="name">{name}</div>
+                    {name_html}
                     {sharebar_status}
                     {sharebar_html}
                 </div>
@@ -465,7 +491,8 @@ class HTMLHandler:
         rows = []
         for idx, p in enumerate(products, 1):
             product_id = p.get('product_id', '') or ''
-            name = p.get('name', '未知产品') or '未知产品'
+            # 🔑 表格中使用日文名称
+            name = p.get('name_ja', p.get('name', '未知产品')) or '未知产品'
             link = p.get('sharebar', p.get('url', '')) or ''
             link = link[:60] if link else '无'
             has_sharebar = p.get('has_sharebar', False)

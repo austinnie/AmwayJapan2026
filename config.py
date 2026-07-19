@@ -43,7 +43,7 @@ class Config:
     
     # 第三步：生成二维码并合并图片
     # True=生成二维码, False=跳过
-    ENABLE_QR = True
+    ENABLE_QR = False
     
     # 第四步：导出文档（HTML/PDF/Word）
     # True=导出文档, False=跳过

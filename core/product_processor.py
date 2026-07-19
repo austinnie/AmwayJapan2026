@@ -554,6 +554,7 @@ class ProductProcessor:
         
     
     async def export_html_and_pdf(self):
+        """第四步：导出 HTML、PDF 和 Word（含多语言名称）"""
         self.log("\n" + "=" * 60)
         self.log("📄 第四步：导出 HTML、PDF 和 Word")
         self.log("=" * 60)
@@ -564,6 +565,9 @@ class ProductProcessor:
         if not with_sharebar_urls and not without_sharebar_urls:
             self.log("⚠️ 没有产品数据可导出")
             return
+        
+        # 🔑 加载多语言映射
+        lang_mapping = self._load_lang_mapping()
         
         all_products = []
         with_sharebar_products = []
@@ -578,17 +582,24 @@ class ProductProcessor:
             sharebar = self._get_sharebar_from_mapping(product_id)
             product_name = self._get_product_name(product_id)
             
+            # 🔑 获取多语言名称
+            lang_data = lang_mapping.get(product_id, {})
+            
             image_path = image_dir / f"{product_id}.png"
             merged_path = merged_dir / f"{product_id}_merged.png"
             
             product_info = {
                 'product_id': product_id,
                 'url': url,
-                'name': product_name,
+                'name': product_name,           # 日文（保留兼容）
+                'name_ja': lang_data.get('ja', product_name),  # 日文
+                'name_zh': lang_data.get('zh', ''),            # 中文
+                'name_en': lang_data.get('en', ''),            # 英文
                 'image_path': str(image_path) if image_path.exists() else None,
                 'sharebar': sharebar,
                 'has_sharebar': True,
-                'merged_path': str(merged_path) if merged_path.exists() else None
+                'merged_path': str(merged_path) if merged_path.exists() else None,
+                'lang': lang_data  # 完整语言数据
             }
             all_products.append(product_info)
             with_sharebar_products.append(product_info)
@@ -597,17 +608,24 @@ class ProductProcessor:
             product_id = self.file_utils.extract_product_id(url)
             product_name = self._get_product_name(product_id)
             
+            # 🔑 获取多语言名称
+            lang_data = lang_mapping.get(product_id, {})
+            
             image_path = image_dir / f"{product_id}.png"
             merged_path = merged_dir / f"{product_id}_merged.png"
             
             product_info = {
                 'product_id': product_id,
                 'url': url,
-                'name': product_name,
+                'name': product_name,           # 日文（保留兼容）
+                'name_ja': lang_data.get('ja', product_name),  # 日文
+                'name_zh': lang_data.get('zh', ''),            # 中文
+                'name_en': lang_data.get('en', ''),            # 英文
                 'image_path': str(image_path) if image_path.exists() else None,
                 'sharebar': None,
                 'has_sharebar': False,
-                'merged_path': str(merged_path) if merged_path.exists() else None
+                'merged_path': str(merged_path) if merged_path.exists() else None,
+                'lang': lang_data  # 完整语言数据
             }
             all_products.append(product_info)
             without_sharebar_products.append(product_info)
@@ -658,6 +676,18 @@ class ProductProcessor:
         self.log("✅ 文档导出完成!")
         self.log(f"📁 输出目录: {exports_dir}")
         self.log("=" * 60)
+
+    def _load_lang_mapping(self) -> dict:
+        """加载多语言映射"""
+        import json
+        mapping_file = self.config.PRODUCTS_DIR / "product_lang_mapping.json"
+        if mapping_file.exists():
+            try:
+                with open(mapping_file, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except:
+                pass
+        return {}
     
     # ============================================================
     # 保存分类列表
