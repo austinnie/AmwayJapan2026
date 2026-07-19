@@ -35,12 +35,14 @@ class WorkerThread(QThread):
     finished_signal = Signal()
     error_signal = Signal(str)
     
-    def __init__(self, mode, headless, config, progress):
+    def __init__(self, mode, headless, config, progress, export_summary=True, export_single_word=True):
         super().__init__()
         self.mode = mode
         self.headless = headless
         self.config = config
         self.progress = progress
+        self.export_summary = export_summary
+        self.export_single_word = export_single_word
         self._is_running = True
     
     def stop(self):
@@ -103,7 +105,10 @@ class WorkerThread(QThread):
                     progress=self.progress,
                     logger=None
                 )
-                await processor.export_html_and_pdf()
+                # 🔑 临时覆盖导出配置
+                processor.config.ENABLE_SUMMARY_EXPORT = self.export_summary
+                processor.config.ENABLE_SINGLE_WORD = self.export_single_word
+                await processor.process_all()
                 self.log_signal.emit("✅ 文档导出完成！", "SUCCESS")
                 return
             
@@ -143,11 +148,15 @@ class WorkerThread(QThread):
                 logger=None
             )
             
+            # 🔑 应用导出配置
+            processor.config.ENABLE_SUMMARY_EXPORT = self.export_summary
+            processor.config.ENABLE_SINGLE_WORD = self.export_single_word
+            
             # 执行任务
             if self.mode == "fetch":
                 self.log_signal.emit("🌐 获取产品列表...", "INFO")
-                await processor.fetch_all_product_urls()
-                self.log_signal.emit("✅ 产品列表获取完成！", "SUCCESS")
+                # fetch 模式需要添加方法
+                self.log_signal.emit("⚠️ fetch 模式暂未实现", "WARNING")
             elif self.mode == "scan":
                 self.log_signal.emit("📋 仅扫描模式...", "INFO")
                 await processor.scan_all_products()
@@ -203,7 +212,7 @@ class MainWindow(QMainWindow):
         self.worker = None
         
         self.setWindowTitle("安利日本产品自动化系统")
-        self.setMinimumSize(850, 650)
+        self.setMinimumSize(850, 700)
         
         # 设置样式
         self.setStyleSheet("""
@@ -270,6 +279,9 @@ class MainWindow(QMainWindow):
                 color: #1a237e;
                 font-weight: bold;
             }
+            QCheckBox {
+                padding: 4px 8px;
+            }
         """)
         
         # 创建中央部件
@@ -309,10 +321,27 @@ class MainWindow(QMainWindow):
         self.mode_buttons["full"].setChecked(True)
         
         # ---- 选项 ----
-        option_layout = QHBoxLayout()
+        option_layout = QVBoxLayout()
+        
+        # 第一行：无头模式
+        row1 = QHBoxLayout()
         self.headless_check = QCheckBox("无头模式 (不显示浏览器窗口)")
-        option_layout.addWidget(self.headless_check)
-        option_layout.addStretch()
+        row1.addWidget(self.headless_check)
+        row1.addStretch()
+        option_layout.addLayout(row1)
+        
+        # 第二行：导出选项
+        row2 = QHBoxLayout()
+        self.export_summary_check = QCheckBox("📄 导出汇总文档 (HTML/PDF/Word)")
+        self.export_summary_check.setChecked(True)
+        row2.addWidget(self.export_summary_check)
+        
+        self.export_single_check = QCheckBox("📄 导出单个产品 Word 文档")
+        self.export_single_check.setChecked(True)
+        row2.addWidget(self.export_single_check)
+        row2.addStretch()
+        option_layout.addLayout(row2)
+        
         main_layout.addLayout(option_layout)
         
         # ---- 日志区域 ----
@@ -455,13 +484,19 @@ class MainWindow(QMainWindow):
                 break
         
         headless = self.headless_check.isChecked()
+        export_summary = self.export_summary_check.isChecked()
+        export_single = self.export_single_check.isChecked()
         
         self._log(f"🚀 启动任务 (模式: {mode}, 无头: {headless})", "SUCCESS")
+        self._log(f"📄 导出汇总: {export_summary}, 导出单产品Word: {export_single}", "INFO")
         
         self._update_buttons(True)
         
         # 创建工作线程
-        self.worker = WorkerThread(mode, headless, self.config, self.progress)
+        self.worker = WorkerThread(
+            mode, headless, self.config, self.progress,
+            export_summary, export_single
+        )
         self.worker.log_signal.connect(self._log)
         self.worker.status_signal.connect(self._set_status)
         self.worker.finished_signal.connect(self._on_finished)

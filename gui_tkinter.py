@@ -1,4 +1,4 @@
-# gui.py
+# gui_tkinter.py
 """
 安利日本产品自动化系统 - GUI界面
 """
@@ -29,9 +29,7 @@ class RedirectLogger:
     
     def write(self, message):
         if message:
-            # 累积消息
             self.buffer += message
-            # 如果消息包含换行符，一次性插入
             if '\n' in self.buffer:
                 self.text_widget.insert(tk.END, self.buffer)
                 self.text_widget.see(tk.END)
@@ -52,8 +50,8 @@ class AmwayGUI:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("安利日本产品自动化系统")
-        self.root.geometry("800x600")
-        self.root.minsize(700, 500)
+        self.root.geometry("800x650")
+        self.root.minsize(700, 550)
         
         # 设置图标
         try:
@@ -122,11 +120,32 @@ class AmwayGUI:
         option_frame = tk.Frame(main_frame)
         option_frame.pack(fill='x', pady=(0, 10))
         
+        # 第一行：无头模式
         self.headless_var = tk.BooleanVar(value=False)
         tk.Checkbutton(
             option_frame,
             text="无头模式 (不显示浏览器窗口)",
             variable=self.headless_var,
+            font=('Microsoft YaHei', 10)
+        ).pack(side='left', padx=(0, 20))
+        
+        # 第二行：导出选项（新的一行）
+        export_frame = tk.Frame(main_frame)
+        export_frame.pack(fill='x', pady=(0, 10))
+        
+        self.export_summary_var = tk.BooleanVar(value=True)
+        tk.Checkbutton(
+            export_frame,
+            text="📄 导出汇总文档 (HTML/PDF/Word)",
+            variable=self.export_summary_var,
+            font=('Microsoft YaHei', 10)
+        ).pack(side='left', padx=(0, 20))
+        
+        self.export_single_var = tk.BooleanVar(value=True)
+        tk.Checkbutton(
+            export_frame,
+            text="📄 导出单个产品 Word 文档",
+            variable=self.export_single_var,
             font=('Microsoft YaHei', 10)
         ).pack(side='left')
         
@@ -227,15 +246,12 @@ class AmwayGUI:
         if not message:
             return
         
-        # 按换行符分割，逐行添加
         lines = message.split('\n')
         for i, line in enumerate(lines):
             if i == 0:
-                # 第一行带时间戳
                 self.log_text.insert(tk.END, f"[{timestamp}] ", 'INFO')
                 self.log_text.insert(tk.END, f"{line}\n", level)
             else:
-                # 后续行缩进对齐
                 self.log_text.insert(tk.END, f"           {line}\n", level)
         
         self.log_text.see(tk.END)
@@ -267,25 +283,32 @@ class AmwayGUI:
         
         mode = self.mode_var.get()
         headless = self.headless_var.get()
+        export_summary = self.export_summary_var.get()
+        export_single = self.export_single_var.get()
         
         self._log(f"🚀 启动任务 (模式: {mode}, 无头: {headless})", 'SUCCESS')
+        self._log(f"📄 导出汇总: {export_summary}, 导出单产品Word: {export_single}", 'INFO')
         
         self._update_buttons(True)
         
         # 在新线程中运行
-        thread = threading.Thread(target=self._run_async, args=(mode, headless), daemon=True)
+        thread = threading.Thread(
+            target=self._run_async,
+            args=(mode, headless, export_summary, export_single),
+            daemon=True
+        )
         thread.start()
     
-    def _run_async(self, mode, headless):
+    def _run_async(self, mode, headless, export_summary, export_single):
         """在新线程中运行异步任务"""
         try:
-            # 创建新的事件循环
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             self.loop = loop
             
-            # 执行任务
-            loop.run_until_complete(self._run_task(mode, headless))
+            loop.run_until_complete(
+                self._run_task(mode, headless, export_summary, export_single)
+            )
             
         except Exception as e:
             self._log(f"❌ 执行出错: {e}", 'ERROR')
@@ -297,7 +320,7 @@ class AmwayGUI:
                 self.loop = None
             self.root.after(0, lambda: self._update_buttons(False))
     
-    async def _run_task(self, mode, headless):
+    async def _run_task(self, mode, headless, export_summary, export_single):
         """执行异步任务"""
         config = self.config
         
@@ -311,14 +334,15 @@ class AmwayGUI:
                     progress=self.progress,
                     logger=None
                 )
-                await processor.export_html_and_pdf()
+                processor.config.ENABLE_SUMMARY_EXPORT = export_summary
+                processor.config.ENABLE_SINGLE_WORD = export_single
+                await processor.process_all()
                 self._log("✅ 文档导出完成！", 'SUCCESS')
                 return
             
             # 其他模式需要浏览器
             self._log("🚀 启动浏览器...", 'INFO')
             
-            # 临时修改配置
             original_headless = config.HEADLESS
             config.HEADLESS = headless
             
@@ -351,18 +375,19 @@ class AmwayGUI:
                 progress=self.progress,
                 logger=None
             )
+            processor.config.ENABLE_SUMMARY_EXPORT = export_summary
+            processor.config.ENABLE_SINGLE_WORD = export_single
             
             # 执行任务
             if mode == "fetch":
                 self._log("🌐 获取产品列表...", 'INFO')
-                await processor.fetch_all_product_urls()
-                self._log("✅ 产品列表获取完成！", 'SUCCESS')
+                self._log("⚠️ fetch 模式暂未实现", 'WARNING')
             elif mode == "scan":
                 self._log("📋 仅扫描模式...", 'INFO')
                 await processor.scan_all_products()
                 await processor.verify_no_sharebar()
                 self._log("✅ 扫描完成！", 'SUCCESS')
-            else:  # full
+            else:
                 await processor.process_all()
             
             self._log("✅ 所有任务完成！", 'SUCCESS')
@@ -386,16 +411,9 @@ class AmwayGUI:
             self._log(f"📄 页面内容预览: {page_text[:200]}...", 'INFO')
             
             maintenance_keywords = [
-                'メンテナンス',
-                'ご利用いただけません',
-                '作業のため',
-                'しばらくお待ちください',
-                'システムメンテナンス',
-                'メンテナンス中',
-                '一時休止',
-                '時間帯はご利用',
-                '作業を実施',
-                'メンテナンス作業',
+                'メンテナンス', 'ご利用いただけません', '作業のため',
+                'しばらくお待ちください', 'システムメンテナンス', 'メンテナンス中',
+                '一時休止', '時間帯はご利用', '作業を実施', 'メンテナンス作業',
             ]
             
             for keyword in maintenance_keywords:
@@ -436,7 +454,6 @@ class AmwayGUI:
         """重置进度"""
         if messagebox.askyesno("确认", "确定要重置所有进度吗？\n这将清除已处理产品的记录。"):
             self.progress.reset()
-            # 同时删除 qr_progress.json
             qr_file = self.config.PRODUCTS_DIR / "qr_progress.json"
             if qr_file.exists():
                 qr_file.unlink()
