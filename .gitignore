@@ -77,10 +77,10 @@ edge_profile/
 # 项目特定 - 排除产品数据（但保留列表文件）
 # ============================================================
 # 产品图片、二维码、合并图（数据量大，不提交）
-products/*/product_images/
-products/*/qr_codes/
-products/*/merged_images/
-products/*/results/
+!products/*/product_images/
+!products/*/qr_codes/
+!products/*/merged_images/
+!products/*/results/
 
 # 但保留产品列表文件
 !products/*.txt
