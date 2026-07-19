@@ -29,7 +29,14 @@ class Config:
     VIEWPORT_WIDTH = 1400
     VIEWPORT_HEIGHT = 1000
     
-    # ========== 功能开关 ==========
+    # ========== 功能开关（运行模式） ==========
+    # 运行模式: "full" | "scan" | "export" | "fetch"
+    RUN_MODE = "full"
+    
+    # 是否启用二次确认（对无Sharebar的产品重新检查）
+    ENABLE_RETRY = False
+    
+    # ========== 导出开关 ==========
     ENABLE_SHAREBAR = True
     ENABLE_QRCODE = True
     ENABLE_WORD = True
