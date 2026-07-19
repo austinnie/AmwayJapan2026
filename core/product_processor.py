@@ -191,17 +191,7 @@ class ProductProcessor:
         with open(mapping_file, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
     
-    def _get_sharebar_from_mapping(self, product_id: str) -> str:
-        import json
-        mapping_file = self.config.PRODUCTS_DIR / "sharebar_mapping.json"
-        if mapping_file.exists():
-            try:
-                with open(mapping_file, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                    return data.get(product_id)
-            except:
-                pass
-        return None
+
     
     def _append_to_category_list(self, product_id: str, url: str, category: str):
         filename = f"list-{category}.txt"
@@ -380,6 +370,9 @@ class ProductProcessor:
         processed_qr = self._load_qr_progress()
         has_sharebar_set = set(with_sharebar_urls)
         
+        # 🔑 加载 Sharebar 映射
+        sharebar_data = self._load_sharebar_mapping()
+        
         for i, url in enumerate(all_urls):
             product_id = self.file_utils.extract_product_id(url)
             
@@ -397,11 +390,20 @@ class ProductProcessor:
             self.log(f"\n📦 [{i+1}/{len(all_urls)}] 处理产品: {product_id}")
             
             if url in has_sharebar_set:
-                sharebar = self._get_sharebar_from_mapping(product_id)
+                # ✅ 直接从映射数据读取
+                sharebar = sharebar_data.get(product_id)
+                self.log(f"   🔍 从映射读取: {product_id} -> {sharebar if sharebar else '无'}")
+                
                 if not sharebar:
+                    # 只有没有时才重新获取
+                    self.log(f"   🔄 重新获取 Sharebar...")
                     sharebar = await self.sharebar_handler.get_sharebar_link(url, retry=2)
                     if sharebar:
                         self._save_sharebar_mapping(product_id, sharebar)
+                        sharebar_data[product_id] = sharebar
+                        self.log(f"   ✅ 获取到 Sharebar: {sharebar}")
+                    else:
+                        self.log(f"   ⚠️ 获取失败，使用产品URL")
                 
                 qr_url = sharebar if sharebar else url
                 qr_type = "Sharebar" if sharebar else "产品URL(降级)"
@@ -430,6 +432,19 @@ class ProductProcessor:
             await asyncio.sleep(0.5)
         
         self.log("\n✅ 二维码生成和图片合并完成")
+
+
+    def _load_sharebar_mapping(self) -> dict:
+        """加载 Sharebar 映射"""
+        import json
+        mapping_file = self.config.PRODUCTS_DIR / "sharebar_mapping.json"
+        if mapping_file.exists():
+            try:
+                with open(mapping_file, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except:
+                pass
+        return {}
     
     def _load_urls_from_file(self, filename: str) -> List[str]:
         file_path = self.config.PRODUCTS_DIR / filename
@@ -475,6 +490,7 @@ class ProductProcessor:
             except:
                 pass
         return None
+        
     
     async def export_html_and_pdf(self):
         self.log("\n" + "=" * 60)
@@ -601,21 +617,40 @@ class ProductProcessor:
     # ============================================================
     # 主入口
     # ============================================================
-    async def process_all(self, skip_scan: bool = False):
+    # core/product_processor.py
+
+    async def process_all(self):
         """
-        执行完整流程
+        执行完整流程（每个步骤由 config 控制）
+        """
+        config = self.config
         
-        Args:
-            skip_scan: 是否跳过第一步和第二步
-                - False: 先扫描，再生成二维码（适合首次运行）
-                - True: 直接从分类列表生成二维码（适合已扫描完成）
-        """
-        if not skip_scan:
+        # 第一步：扫描
+        if config.ENABLE_SCAN:
             await self.scan_all_products()
-            await self.verify_no_sharebar()
+        else:
+            self.log("⏭️ 跳过第一步：扫描")
         
-        await self.generate_qr_and_merge()
-        await self.export_html_and_pdf()
+        # 第二步：二次确认
+        if config.ENABLE_VERIFY:
+            if config.ENABLE_SCAN:
+                await self.verify_no_sharebar()
+            else:
+                self.log("⚠️ 第二步需要先启用第一步（ENABLE_SCAN），跳过")
+        else:
+            self.log("⏭️ 跳过第二步：二次确认")
+        
+        # 第三步：生成二维码
+        if config.ENABLE_QR:
+            await self.generate_qr_and_merge()
+        else:
+            self.log("⏭️ 跳过第三步：生成二维码")
+        
+        # 第四步：导出文档
+        if config.ENABLE_EXPORT:
+            await self.export_html_and_pdf()
+        else:
+            self.log("⏭️ 跳过第四步：导出文档")
         
         self.log("\n" + "=" * 60)
         self.log("✅ 所有处理完成！")
