@@ -23,6 +23,7 @@ class AmwayAutomation:
         self.config = Config.ensure_directories()
         self.logger = setup_logger(self.config.LOGS_DIR / "app.log")
         self.browser = None
+<<<<<<< HEAD
         # 🔑 使用 PRODUCTS_DIR
         self.progress = ProgressManager(self.config.PRODUCTS_DIR)
         self.headless = headless if headless is not None else self.config.HEADLESS
@@ -80,6 +81,11 @@ class AmwayAutomation:
             return False
         
 
+=======
+        self.progress = ProgressManager(self.config.OUTPUT_DIR)
+        self.headless = headless if headless is not None else self.config.HEADLESS
+    
+>>>>>>> d18774987b117fa2869730ad4b0f667a1beaef7c
     async def run(self, mode: str = "full"):
         """
         执行主流程
@@ -89,18 +95,29 @@ class AmwayAutomation:
                 - "full": 完整流程（需要浏览器）
                 - "export": 仅导出文档（不需要浏览器）
                 - "scan": 仅扫描（需要浏览器）
+<<<<<<< HEAD
                 - "fetch": 从网站获取产品列表（需要浏览器）
+=======
+>>>>>>> d18774987b117fa2869730ad4b0f667a1beaef7c
         """
         self.logger.info("=" * 60)
         self.logger.info(f"安利产品自动化系统 - 模式: {mode}")
         self.logger.info("=" * 60)
         
         try:
+<<<<<<< HEAD
             # 🔑 export 模式不需要浏览器
             if mode == "export":
                 self.logger.info("📄 仅导出模式，不需要浏览器")
                 processor = ProductProcessor(
                     browser=None,
+=======
+            # 如果是仅导出模式，不需要浏览器
+            if mode == "export":
+                self.logger.info("📄 仅导出模式，不需要浏览器")
+                processor = ProductProcessor(
+                    browser=None,  # 不需要浏览器
+>>>>>>> d18774987b117fa2869730ad4b0f667a1beaef7c
                     config=self.config,
                     progress=self.progress,
                     logger=self.logger
@@ -109,7 +126,11 @@ class AmwayAutomation:
                 self.logger.info("✅ 文档导出完成！")
                 return
             
+<<<<<<< HEAD
             # 🔑 其他模式需要浏览器
+=======
+            # 其他模式需要浏览器
+>>>>>>> d18774987b117fa2869730ad4b0f667a1beaef7c
             self.logger.info("🚀 启动浏览器...")
             self.browser = await BrowserManager(self.config).start()
 
@@ -128,13 +149,21 @@ class AmwayAutomation:
                 self.logger.error("❌ 网站正在维护，请稍后再试")
                 return
             
+<<<<<<< HEAD
             # 🔑 网站正常，继续登录
+=======
+            # 登录
+>>>>>>> d18774987b117fa2869730ad4b0f667a1beaef7c
             self.logger.info("🔐 登录...")
             login_manager = LoginManager(self.browser.page, self.config)
             if not await login_manager.login():
                 self.logger.error("❌ 登录失败")
                 return
             
+<<<<<<< HEAD
+=======
+            # 创建产品处理器
+>>>>>>> d18774987b117fa2869730ad4b0f667a1beaef7c
             processor = ProductProcessor(
                 browser=self.browser,
                 config=self.config,
@@ -142,6 +171,7 @@ class AmwayAutomation:
                 logger=self.logger
             )
             
+<<<<<<< HEAD
             if mode == "fetch":
                 self.logger.info("🌐 获取产品列表...")
                 await processor.fetch_all_product_urls()
@@ -154,6 +184,15 @@ class AmwayAutomation:
                 self.logger.info("✅ 扫描完成！")
                 
             else:
+=======
+            if mode == "scan":
+                # 仅扫描
+                await processor.scan_all_products()
+                await processor.verify_no_sharebar()
+                self.logger.info("✅ 扫描完成！")
+            else:
+                # 完整流程
+>>>>>>> d18774987b117fa2869730ad4b0f667a1beaef7c
                 await processor.process_all()
             
             self.logger.info("=" * 60)
@@ -175,9 +214,15 @@ def main():
     parser = argparse.ArgumentParser(description="安利日本产品自动化系统")
     parser.add_argument(
         "--mode", 
+<<<<<<< HEAD
         choices=["full", "scan", "export", "fetch"],
         default="full",
         help="运行模式: full=完整流程, scan=仅扫描, export=仅导出文档, fetch=获取产品列表"
+=======
+        choices=["full", "scan", "export"],
+        default="full",
+        help="运行模式: full=完整流程, scan=仅扫描, export=仅导出文档"
+>>>>>>> d18774987b117fa2869730ad4b0f667a1beaef7c
     )
     parser.add_argument(
         "--headless",
@@ -189,6 +234,10 @@ def main():
     
     app = AmwayAutomation(headless=args.headless)
     asyncio.run(app.run(mode=args.mode))
+<<<<<<< HEAD
+=======
+
+>>>>>>> d18774987b117fa2869730ad4b0f667a1beaef7c
 
 if __name__ == "__main__":
     main()

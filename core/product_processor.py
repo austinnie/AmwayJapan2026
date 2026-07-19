@@ -228,8 +228,13 @@ class ProductProcessor:
         
         with open(file_path, 'a', encoding='utf-8') as f:
             f.write(f"{url}\n")
+<<<<<<< HEAD
             
     async def _extract_product_name(self, page, product_id: str = "") -> str:
+=======
+        
+    async def _extract_product_name(self, page) -> str:
+>>>>>>> d18774987b117fa2869730ad4b0f667a1beaef7c
         """提取产品名称"""
         try:
             # 🔑 方法1: 从页面标题提取
@@ -364,6 +369,7 @@ class ProductProcessor:
     # ============================================================
     # core/product_processor.py - 修改 generate_qr_and_merge
 
+<<<<<<< HEAD
     # core/product_processor.py - 添加到 ProductProcessor 类中
 
     async def fetch_all_product_urls(self):
@@ -482,6 +488,8 @@ class ProductProcessor:
             await page.close()
         
         
+=======
+>>>>>>> d18774987b117fa2869730ad4b0f667a1beaef7c
     async def generate_qr_and_merge(self):
         """第三步：生成二维码并合并图片（支持断点续传）"""
         self.log("\n" + "=" * 60)
@@ -724,7 +732,11 @@ class ProductProcessor:
         
     def _load_qr_progress(self) -> set:
         """加载二维码处理进度"""
+<<<<<<< HEAD
         progress_file = self.config.PRODUCTS_DIR  / "qr_progress.json"
+=======
+        progress_file = self.config.OUTPUT_DIR / "qr_progress.json"
+>>>>>>> d18774987b117fa2869730ad4b0f667a1beaef7c
         if progress_file.exists():
             try:
                 import json
@@ -737,7 +749,11 @@ class ProductProcessor:
     def _save_qr_progress(self, product_id: str):
         """保存单个产品二维码处理进度"""
         import json
+<<<<<<< HEAD
         progress_file = self.config.PRODUCTS_DIR  / "qr_progress.json"
+=======
+        progress_file = self.config.OUTPUT_DIR / "qr_progress.json"
+>>>>>>> d18774987b117fa2869730ad4b0f667a1beaef7c
         
         # 加载现有进度
         processed = self._load_qr_progress()
@@ -777,7 +793,34 @@ class ProductProcessor:
                 pass
         return None
 
+<<<<<<< HEAD
             
+=======
+    def _prepare_images_for_export(self, products: List[Dict]):
+        """准备导出用的图片（复制到输出目录）"""
+        output_images_dir = self.config.OUTPUT_DIR / "images"
+        output_images_dir.mkdir(parents=True, exist_ok=True)
+        
+        for product in products:
+            merged_path = product.get('merged_path')
+            if merged_path and Path(merged_path).exists():
+                dest = output_images_dir / Path(merged_path).name
+                if not dest.exists():
+                    try:
+                        import shutil
+                        shutil.copy2(merged_path, dest)
+                    except:
+                        pass
+            elif product.get('image_path') and Path(product['image_path']).exists():
+                dest = output_images_dir / Path(product['image_path']).name
+                if not dest.exists():
+                    try:
+                        import shutil
+                        shutil.copy2(product['image_path'], dest)
+                    except:
+                        pass
+                    
+>>>>>>> d18774987b117fa2869730ad4b0f667a1beaef7c
     async def export_html_and_pdf(self):
         """第四步：导出 HTML 和 PDF 文档（直接从文件读取）"""
         self.log("\n" + "=" * 60)
@@ -846,6 +889,7 @@ class ProductProcessor:
         self.log(f"📊 无Sharebar: {len(without_sharebar_products)} 个")
         self.log(f"📊 共 {len(all_products)} 个产品")
         
+<<<<<<< HEAD
         # 🔑 使用 exports 目录
         exports_dir = self.config.EXPORTS_DIR
         exports_dir.mkdir(parents=True, exist_ok=True)
@@ -854,6 +898,14 @@ class ProductProcessor:
         self._prepare_images_for_export(all_products)
 
    
+=======
+        # 确保输出目录存在
+        self.config.OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+        
+        # 准备图片复制（HTML需要引用图片）
+        #self._prepare_images_for_export(all_products)
+
+>>>>>>> d18774987b117fa2869730ad4b0f667a1beaef7c
         # 🔑 导入 WordHandler
         from handlers.word_handler import WordHandler
         word_handler = WordHandler()
@@ -861,9 +913,15 @@ class ProductProcessor:
         # 1. 导出全产品
         self.log("📄 导出全产品目录...")
         base_name = "安利日本产品目录"
+<<<<<<< HEAD
         html_path = exports_dir  / f"{base_name}.html"
         pdf_path = exports_dir  / f"{base_name}.pdf"
         word_path = exports_dir  / f"{base_name}.docx"  # ✅ Word 路径
+=======
+        html_path = self.config.OUTPUT_DIR / f"{base_name}.html"
+        pdf_path = self.config.OUTPUT_DIR / f"{base_name}.pdf"
+        word_path = self.config.OUTPUT_DIR / f"{base_name}.docx"  # ✅ Word 路径
+>>>>>>> d18774987b117fa2869730ad4b0f667a1beaef7c
         
         self.html_handler.export_products(all_products, html_path, "全产品")
         await self.pdf_handler.export_products(all_products, pdf_path, "全产品")
@@ -873,9 +931,15 @@ class ProductProcessor:
         if with_sharebar_products:
             self.log("📄 导出有 Sharebar 产品目录...")
             base_name = "有Sharebar产品"
+<<<<<<< HEAD
             html_path = exports_dir  / f"{base_name}.html"
             pdf_path = exports_dir  / f"{base_name}.pdf"
             word_path = exports_dir  / f"{base_name}.docx"
+=======
+            html_path = self.config.OUTPUT_DIR / f"{base_name}.html"
+            pdf_path = self.config.OUTPUT_DIR / f"{base_name}.pdf"
+            word_path = self.config.OUTPUT_DIR / f"{base_name}.docx"
+>>>>>>> d18774987b117fa2869730ad4b0f667a1beaef7c
             
             self.html_handler.export_products(with_sharebar_products, html_path, "有Sharebar产品")
             await self.pdf_handler.export_products(with_sharebar_products, pdf_path, "有Sharebar产品")
@@ -885,9 +949,15 @@ class ProductProcessor:
         if without_sharebar_products:
             self.log("📄 导出无 Sharebar 产品目录...")
             base_name = "无Sharebar产品"
+<<<<<<< HEAD
             html_path = exports_dir  / f"{base_name}.html"
             pdf_path = exports_dir  / f"{base_name}.pdf"
             word_path = exports_dir  / f"{base_name}.docx"
+=======
+            html_path = self.config.OUTPUT_DIR / f"{base_name}.html"
+            pdf_path = self.config.OUTPUT_DIR / f"{base_name}.pdf"
+            word_path = self.config.OUTPUT_DIR / f"{base_name}.docx"
+>>>>>>> d18774987b117fa2869730ad4b0f667a1beaef7c
             
             self.html_handler.export_products(without_sharebar_products, html_path, "无Sharebar产品")
             await self.pdf_handler.export_products(without_sharebar_products, pdf_path, "无Sharebar产品")
@@ -948,7 +1018,11 @@ class ProductProcessor:
     # ============================================================
     # 主入口
     # ============================================================
+<<<<<<< HEAD
     async def process_all(self, skip_scan: bool = False):
+=======
+    async def process_all(self, skip_scan: bool = True):
+>>>>>>> d18774987b117fa2869730ad4b0f667a1beaef7c
         """
         执行完整流程
         
@@ -957,6 +1031,7 @@ class ProductProcessor:
                 - True: 直接从分类列表生成二维码（适合已扫描完成）
                 - False: 先扫描，再生成二维码（适合首次运行）
         """
+<<<<<<< HEAD
         if not skip_scan:
             # 第一步：扫描
             await self.scan_all_products()
@@ -966,6 +1041,17 @@ class ProductProcessor:
         
         # 第三步：直接从分类列表生成二维码（会重新获取Sharebar并保存）
         await self.generate_qr_from_lists()
+=======
+        #if not skip_scan:
+        #    # 第一步：扫描
+        #    await self.scan_all_products()
+        #    
+        #    # 第二步：二次确认
+        #    await self.verify_no_sharebar()
+        #
+        ## 第三步：直接从分类列表生成二维码（会重新获取Sharebar并保存）
+        #await self.generate_qr_from_lists()
+>>>>>>> d18774987b117fa2869730ad4b0f667a1beaef7c
         
         # 第四步：导出 HTML 和 PDF
         await self.export_html_and_pdf()

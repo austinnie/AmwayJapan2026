@@ -16,8 +16,13 @@ class HTMLHandler:
     # 路径配置
     # ============================================================
     
+<<<<<<< HEAD
     IMG_SRC_PREFIX = "images/"
     IMG_SRC_PREFIX_ORIGINAL = "images/"
+=======
+    IMG_SRC_PREFIX = "../products/all/merged_images/"
+    IMG_SRC_PREFIX_ORIGINAL = "../products/all/product_images/"
+>>>>>>> d18774987b117fa2869730ad4b0f667a1beaef7c
     
     # ============================================================
     # 微信公众号适配模板（1列布局）
@@ -400,17 +405,27 @@ class HTMLHandler:
             name = p.get('name', '未知产品') or '未知产品'
             sharebar = p.get('sharebar', '') or ''
             
+<<<<<<< HEAD
             # 🔑 图片处理
             merged_path = p.get('merged_path')
             if merged_path and Path(merged_path).exists():
                 image_filename = Path(merged_path).name
                 # ✅ 使用 images/ 目录
+=======
+            # 🔑 使用配置的图片路径
+            merged_path = p.get('merged_path')
+            if merged_path and Path(merged_path).exists():
+                image_filename = Path(merged_path).name
+>>>>>>> d18774987b117fa2869730ad4b0f667a1beaef7c
                 image_html = f'<img class="image" src="{self.IMG_SRC_PREFIX}{image_filename}" alt="{name}">'
             else:
                 image_path = p.get('image_path')
                 if image_path and Path(image_path).exists():
                     image_filename = Path(image_path).name
+<<<<<<< HEAD
                     # ✅ 使用 images/ 目录
+=======
+>>>>>>> d18774987b117fa2869730ad4b0f667a1beaef7c
                     image_html = f'<img class="image" src="{self.IMG_SRC_PREFIX_ORIGINAL}{image_filename}" alt="{name}">'
                 else:
                     image_html = '<div class="image" style="display:flex;align-items:center;justify-content:center;color:#ccc;">无图片</div>'
