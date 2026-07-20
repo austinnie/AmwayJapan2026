@@ -1,25 +1,18 @@
-# .github/workflows/deploy-pages.yml
 name: 部署静态页面
 
 on:
   push:
     branches:
-      - gh-pages
+      - master
   workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
     
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
-        with:
-          ref: gh-pages
       
       - name: 创建索引页面
         run: |
@@ -61,5 +54,9 @@ jobs:
           </html>
           EOF
       
-      - name: 部署到 GitHub Pages
-        uses: actions/deploy-pages@v4
+      - name: 部署到 gh-pages 分支
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: .
+          publish_branch: gh-pages
