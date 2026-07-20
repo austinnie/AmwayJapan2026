@@ -4,22 +4,26 @@ name: 部署静态页面
 on:
   push:
     branches:
-      - gh-pages
-  workflow_dispatch:
+      - master          # ← 改成 master，因为你在 master 分支开发
+  workflow_dispatch:    # 允许手动触发
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
         with:
-          ref: gh-pages
+          ref: master    # ← 改成 master
       
       - name: 创建索引页面
         run: |
@@ -61,5 +65,11 @@ jobs:
           </html>
           EOF
       
+      - name: 上传 Pages 制品
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'          # 上传当前目录所有内容（包括 index.html 和 docs/）
+      
       - name: 部署到 GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v4
