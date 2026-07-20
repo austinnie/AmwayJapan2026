@@ -1,11 +1,10 @@
-# .github/workflows/deploy-pages.yml
 name: 部署静态页面
 
 on:
   push:
     branches:
-      - master          # ← 改成 master，因为你在 master 分支开发
-  workflow_dispatch:    # 允许手动触发
+      - master
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -23,7 +22,7 @@ jobs:
       - name: 检出代码
         uses: actions/checkout@v4
         with:
-          ref: master    # ← 改成 master
+          ref: master
       
       - name: 创建索引页面
         run: |
@@ -68,7 +67,7 @@ jobs:
       - name: 上传 Pages 制品
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'          # 上传当前目录所有内容（包括 index.html 和 docs/）
+          path: '.'
       
       - name: 部署到 GitHub Pages
         id: deployment
