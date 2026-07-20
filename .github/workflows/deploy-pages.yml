@@ -1,0 +1,65 @@
+# .github/workflows/deploy-pages.yml
+name: 部署静态页面
+
+on:
+  push:
+    branches:
+      - gh-pages
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+      
+      - name: 创建索引页面
+        run: |
+          cat > index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>安利日本产品目录</title>
+              <style>
+                  body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; background: #f5f6fa; }
+                  h1 { color: #1a237e; }
+                  .card { background: white; border-radius: 12px; padding: 20px; margin: 12px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+                  .card a { color: #1a237e; text-decoration: none; font-size: 18px; font-weight: 600; display: block; padding: 8px 0; }
+                  .card a:hover { color: #283593; }
+                  .badge { display: inline-block; padding: 2px 12px; border-radius: 12px; font-size: 12px; margin-left: 8px; }
+                  .badge.html { background: #e3f2fd; color: #1565c0; }
+                  .badge.pdf { background: #fce4ec; color: #c62828; }
+                  .badge.docx { background: #e8f5e9; color: #2e7d32; }
+                  .footer { text-align: center; color: #999; margin-top: 40px; font-size: 14px; }
+                  .time { color: #666; font-size: 14px; }
+              </style>
+          </head>
+          <body>
+              <h1>🛍️ 安利日本产品目录</h1>
+              <p class="time">📅 更新时间: <span id="updateTime">加载中...</span></p>
+              
+              <div class="card"><a href="docs/安利日本产品目录.html" target="_blank">📄 完整产品目录 <span class="badge html">HTML</span></a></div>
+              <div class="card"><a href="docs/有Sharebar产品.html" target="_blank">✅ 有 Sharebar 产品 <span class="badge html">HTML</span></a></div>
+              <div class="card"><a href="docs/无Sharebar产品.html" target="_blank">❌ 无 Sharebar 产品 <span class="badge html">HTML</span></a></div>
+              <div class="card"><a href="docs/安利日本产品目录_Sharebar版.html" target="_blank">📱 Sharebar 版本 <span class="badge html">HTML</span></a></div>
+              <div class="card"><a href="docs/安利日本产品目录.pdf" target="_blank">📄 完整产品目录 PDF <span class="badge pdf">PDF</span></a></div>
+              <div class="card"><a href="docs/安利日本产品目录.docx" target="_blank">📝 完整产品目录 Word <span class="badge docx">DOCX</span></a></div>
+              
+              <div class="footer">🔄 每周一自动更新 · 点击查看</div>
+              <script>document.getElementById('updateTime').textContent = new Date().toLocaleString('zh-CN');</script>
+          </body>
+          </html>
+          EOF
+      
+      - name: 部署到 GitHub Pages
+        uses: actions/deploy-pages@v4

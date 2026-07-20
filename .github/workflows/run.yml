@@ -1,0 +1,70 @@
+# .github/workflows/run.yml
+name: 自动更新安利日本产品目录
+
+on:
+  # 定时运行：每周一上午 9:00（北京时间）
+  schedule:
+    - cron: '0 1 * * 1'
+  
+  # 手动触发
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: '运行模式'
+        required: true
+        default: 'full'
+        type: choice
+        options:
+          - full
+          - scan
+          - export
+
+jobs:
+  run:
+    name: 运行产品采集
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+      
+      - name: 设置 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          playwright install chromium
+          playwright install-deps
+      
+      - name: 运行产品采集
+        run: python cli.py --mode ${{ github.event.inputs.mode || 'full' }}
+        env:
+          AMWAY_USERNAME: ${{ secrets.AMWAY_USERNAME }}
+          AMWAY_PASSWORD: ${{ secrets.AMWAY_PASSWORD }}
+      
+      - name: 查看生成的文件
+        run: |
+          echo "📊 生成的文件:"
+          ls -la products/exports/
+      
+      - name: 部署到 GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./products/exports
+          publish_branch: gh-pages
+          keep_files: false
+          commit_message: '自动更新产品目录 ${{ github.run_number }}'
+      
+      - name: 上传结果
+        uses: actions/upload-artifact@v4
+        with:
+          name: product-exports
+          path: products/exports/
+          retention-days: 7
