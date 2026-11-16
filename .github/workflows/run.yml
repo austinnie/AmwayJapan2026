@@ -1,8 +1,7 @@
 # .github/workflows/run.yml
 name: 自动更新安利日本产品目录
 
-permissions:
-  contents: write
+
   
 on:
   # 定时运行：每周一上午 9:00（北京时间）
@@ -22,6 +21,9 @@ on:
           - scan
           - export
 
+permissions:
+  contents: write
+  
 jobs:
   run:
     name: 运行产品采集
