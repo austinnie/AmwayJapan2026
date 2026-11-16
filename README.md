@@ -34,6 +34,7 @@
 ---
 
 ## 📁 项目结构
+```txt
 AmwayJapan2026/
 ├── core/
 │ ├── browser.py # 浏览器管理
@@ -73,7 +74,7 @@ AmwayJapan2026/
 ├── gui_pyside.py # GUI 入口
 ├── requirements.txt
 └── README.md
-
+```
 ---
 
 ## 🚀 安装与配置
